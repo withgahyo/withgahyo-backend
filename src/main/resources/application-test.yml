@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: ${TEST_DB_URL:jdbc:mysql://localhost:3306/withgahyo_test?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${TEST_DB_USERNAME:${DB_USERNAME:root}}
+    password: ${TEST_DB_PASSWORD:${DB_PASSWORD:}}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${TEST_JPA_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    show-sql: ${TEST_JPA_SHOW_SQL:true}
