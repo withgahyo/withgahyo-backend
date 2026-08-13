@@ -13,3 +13,10 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
     show-sql: ${JPA_SHOW_SQL:true}
+
+logging:
+  level:
+    root: info
+    com.withgahyo: debug
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
