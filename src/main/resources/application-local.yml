@@ -25,3 +25,7 @@ logging:
     com.withgahyo: debug
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
+
+auth:
+  jwt:
+    secret: ${JWT_SECRET:local-development-secret-must-be-changed}
