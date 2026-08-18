@@ -69,6 +69,11 @@ public class AuthService {
 		return login(OAuthProvider.KAKAO, oauthAccessToken);
 	}
 
+	@Transactional
+	public AuthTokenResponse loginWithGoogle(String oauthAccessToken) {
+		return login(OAuthProvider.GOOGLE, oauthAccessToken);
+	}
+
 	private AuthTokenResponse login(OAuthProvider provider, String oauthAccessToken) {
 		OAuthUserClient oauthUserClient = oauthUserClients.get(provider);
 		if (oauthUserClient == null) {

@@ -32,6 +32,9 @@ class AuthServiceTest {
 	private OAuthUserClient kakaoOAuthUserClient;
 
 	@Mock
+	private OAuthUserClient googleOAuthUserClient;
+
+	@Mock
 	private UserRepository userRepository;
 
 	@Mock
@@ -45,7 +48,10 @@ class AuthServiceTest {
 	@BeforeEach
 	void setUp() {
 		authService = new AuthService(
-			Map.of(OAuthProvider.KAKAO, kakaoOAuthUserClient),
+			Map.of(
+				OAuthProvider.KAKAO, kakaoOAuthUserClient,
+				OAuthProvider.GOOGLE, googleOAuthUserClient
+			),
 			userRepository,
 			refreshTokenRepository,
 			jwtTokenProvider
@@ -119,6 +125,37 @@ class AuthServiceTest {
 		assertThat(response.user().nickname()).isEqualTo("최신닉네임");
 		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/latest.png");
 		assertThat(deletedUser.getDeletedAt()).isNull();
+	}
+
+	@Test
+	void loginWithGoogle_success_whenExistingUser() {
+		OAuthUserInfo oauthUserInfo = new OAuthUserInfo(
+			OAuthProvider.GOOGLE,
+			"google-1",
+			"구글유저",
+			"https://example.com/google.png"
+		);
+		User existingUser = userWithId(User.create(
+			"GOOGLE",
+			"google-1",
+			"이전구글",
+			"https://example.com/old-google.png"
+		), 2L);
+
+		given(googleOAuthUserClient.getUserInfo("google-oauth-token")).willReturn(oauthUserInfo);
+		given(userRepository.findByProviderAndProviderUserId("GOOGLE", "google-1")).willReturn(Optional.of(existingUser));
+		given(jwtTokenProvider.createAccessToken(2L)).willReturn("google-access-token");
+		given(jwtTokenProvider.createRefreshToken(2L)).willReturn("google-refresh-token");
+		given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(3600L);
+
+		AuthTokenResponse response = authService.loginWithGoogle("google-oauth-token");
+
+		assertThat(response.accessToken()).isEqualTo("google-access-token");
+		assertThat(response.refreshToken()).isEqualTo("google-refresh-token");
+		assertThat(response.isNewUser()).isFalse();
+		assertThat(response.user().userId()).isEqualTo(2L);
+		assertThat(response.user().nickname()).isEqualTo("구글유저");
+		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/google.png");
 	}
 
 	private User userWithId(User user, Long userId) {

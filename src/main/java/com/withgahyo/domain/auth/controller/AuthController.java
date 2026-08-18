@@ -24,4 +24,9 @@ public class AuthController {
 	public ApiResponse<AuthTokenResponse> loginWithKakao(@Valid @RequestBody SocialLoginRequest request) {
 		return ApiResponse.success(authService.loginWithKakao(request.oauthAccessToken()));
 	}
+
+	@PostMapping("/login/google")
+	public ApiResponse<AuthTokenResponse> loginWithGoogle(@Valid @RequestBody SocialLoginRequest request) {
+		return ApiResponse.success(authService.loginWithGoogle(request.oauthAccessToken()));
+	}
 }

@@ -20,6 +20,7 @@ public class SecurityConfig {
 		"/swagger-ui/**",
 		"/swagger-ui.html",
 		"/api/v1/auth/login/kakao",
+		"/api/v1/auth/login/google",
 		"/api/v1/auth/token/refresh"
 	};
 
