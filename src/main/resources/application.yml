@@ -18,3 +18,12 @@ springdoc:
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000}
+
+auth:
+  jwt:
+    secret: ${JWT_SECRET:local-development-secret-must-be-changed}
+    access-token-expires-in: ${JWT_ACCESS_TOKEN_EXPIRES_IN:3600}
+    refresh-token-expires-in: ${JWT_REFRESH_TOKEN_EXPIRES_IN:1209600}
+  oauth:
+    kakao:
+      user-info-uri: ${KAKAO_USER_INFO_URI:https://kapi.kakao.com/v2/user/me}

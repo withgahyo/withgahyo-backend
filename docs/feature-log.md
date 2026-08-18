@@ -13,6 +13,7 @@
 
 | 날짜 | 이슈 | 작업 내용 | 왜/어떻게 구현했는지 |
 | --- | --- | --- | --- |
+| 2026-08-19 | feat/1-auth-api | 카카오 소셜 로그인 기반 구현 | Notion AUTH 명세에 맞춰 카카오 OAuth 사용자 정보로 신규 가입 또는 탈퇴 계정 복구를 수행하고, JWT Access Token과 서버 저장 Refresh Token을 발급하도록 `domain.auth` 기반 구조를 추가했습니다. Refresh Token Rotation 요구를 지원하기 위해 `refresh_token` 엔티티와 ERD 기록을 추가했습니다. |
 | YYYY-MM-DD | #이슈번호 / 이슈명 | 무엇을 구현했는지 | 왜 이 방식으로 구현했고, 어떤 흐름으로 구현했는지 |
 
 ## 기록

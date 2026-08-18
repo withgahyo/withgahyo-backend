@@ -41,6 +41,7 @@
 | 25 | `video_generation_job` | `VideoGenerationJob` | 영상 생성 작업 |
 | 26 | `review` | `Review` | 코스 리뷰 |
 | 27 | `review_highlight` | `ReviewHighlight` | 리뷰 하이라이트 |
+| 28 | `refresh_token` | `RefreshToken` | 인증 Refresh Token 세션 |
 
 ## Mermaid ERD
 
@@ -95,6 +96,7 @@ erDiagram
 ### 사용자/온보딩
 
 - `users`: `provider`, `provider_user_id`, `nickname`, `profile_image_url`, `created_at`, `updated_at`, `deleted_at`
+- `refresh_token`: `user_id`, `token`, `expires_at`, `created_at`, `revoked_at`으로 서버 관리 Refresh Token 세션을 저장합니다.
 - `user_onboarding_profile`: `user_id`를 PK/FK로 사용하고, 여행 기간/보행/휴식/계단/경사/매운맛 선호와 `onboarding_completed`를 저장합니다.
 - 사용자 선호는 `user_tourism_preference`, `user_food_preference`, `user_facility_preference`에서 각각 `(user_id, *_id)` 복합키로 관리합니다.
 - `family_relation`은 사용자 간 관계를 저장하며 `(user_id, family_user_id)`가 unique입니다.
@@ -125,6 +127,7 @@ erDiagram
 | 테이블 | 제약 |
 | --- | --- |
 | `users` | `(provider, provider_user_id)` |
+| `refresh_token` | `token` |
 | `tourism_preference` | `code` |
 | `food_preference` | `code` |
 | `facility` | `code` |

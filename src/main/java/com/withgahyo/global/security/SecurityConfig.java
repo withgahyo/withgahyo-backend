@@ -18,7 +18,9 @@ public class SecurityConfig {
 		"/error",
 		"/api-docs/**",
 		"/swagger-ui/**",
-		"/swagger-ui.html"
+		"/swagger-ui.html",
+		"/api/v1/auth/login/kakao",
+		"/api/v1/auth/token/refresh"
 	};
 
 	@Bean

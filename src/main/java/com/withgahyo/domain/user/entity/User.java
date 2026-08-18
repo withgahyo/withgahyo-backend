@@ -52,6 +52,25 @@ public class User {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
+	public static User create(String provider, String providerUserId, String nickname, String profileImageUrl) {
+		User user = new User();
+		user.provider = provider;
+		user.providerUserId = providerUserId;
+		user.nickname = nickname;
+		user.profileImageUrl = profileImageUrl;
+		return user;
+	}
+
+	public void restoreOrUpdate(String nickname, String profileImageUrl) {
+		this.deletedAt = null;
+		this.nickname = nickname;
+		this.profileImageUrl = profileImageUrl;
+	}
+
+	public void withdraw(LocalDateTime withdrawnAt) {
+		this.deletedAt = withdrawnAt;
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();
