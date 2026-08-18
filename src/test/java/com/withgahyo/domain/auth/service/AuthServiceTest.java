@@ -2,6 +2,7 @@ package com.withgahyo.domain.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -156,6 +157,13 @@ class AuthServiceTest {
 		assertThat(response.user().userId()).isEqualTo(2L);
 		assertThat(response.user().nickname()).isEqualTo("구글유저");
 		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/google.png");
+	}
+
+	@Test
+	void logout_success_revokesAllRefreshTokensByUser() {
+		authService.logout(1L);
+
+		verify(refreshTokenRepository).revokeAllByUserId(eq(1L), any(LocalDateTime.class));
 	}
 
 	private User userWithId(User user, Long userId) {

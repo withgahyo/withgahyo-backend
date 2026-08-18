@@ -16,6 +16,7 @@ import com.withgahyo.global.exception.code.SecurityErrorCode;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,6 +73,11 @@ public class AuthService {
 	@Transactional
 	public AuthTokenResponse loginWithGoogle(String oauthAccessToken) {
 		return login(OAuthProvider.GOOGLE, oauthAccessToken);
+	}
+
+	@Transactional
+	public void logout(Long userId) {
+		refreshTokenRepository.revokeAllByUserId(userId, LocalDateTime.now());
 	}
 
 	private AuthTokenResponse login(OAuthProvider provider, String oauthAccessToken) {

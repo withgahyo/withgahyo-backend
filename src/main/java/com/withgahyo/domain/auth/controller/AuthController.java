@@ -3,8 +3,12 @@ package com.withgahyo.domain.auth.controller;
 import com.withgahyo.domain.auth.dto.AuthTokenResponse;
 import com.withgahyo.domain.auth.dto.SocialLoginRequest;
 import com.withgahyo.domain.auth.service.AuthService;
+import com.withgahyo.global.exception.BusinessException;
+import com.withgahyo.global.exception.code.SecurityErrorCode;
 import com.withgahyo.global.response.ApiResponse;
+import com.withgahyo.global.security.AuthenticatedUser;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,5 +32,14 @@ public class AuthController {
 	@PostMapping("/login/google")
 	public ApiResponse<AuthTokenResponse> loginWithGoogle(@Valid @RequestBody SocialLoginRequest request) {
 		return ApiResponse.success(authService.loginWithGoogle(request.oauthAccessToken()));
+	}
+
+	@PostMapping("/logout")
+	public ApiResponse<Void> logout(@AuthenticationPrincipal AuthenticatedUser authenticatedUser) {
+		if (authenticatedUser == null) {
+			throw new BusinessException(SecurityErrorCode.UNAUTHORIZED);
+		}
+		authService.logout(authenticatedUser.userId());
+		return ApiResponse.ok();
 	}
 }

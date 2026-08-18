@@ -60,6 +60,13 @@ public class JwtTokenProvider {
 		return LocalDateTime.ofInstant(Instant.now().plusSeconds(refreshTokenExpiresIn), ZoneId.systemDefault());
 	}
 
+	public Long getUserIdFromAccessToken(String accessToken) {
+		Map<String, Object> claims = parseClaims(accessToken);
+		validateTokenType(claims, TOKEN_TYPE_ACCESS);
+		validateExpiration(claims);
+		return Long.valueOf(claims.get("sub").toString());
+	}
+
 	private String createToken(Long userId, String tokenType, long expiresIn) {
 		long now = Instant.now().getEpochSecond();
 		Map<String, Object> header = Map.of(
@@ -100,7 +107,6 @@ public class JwtTokenProvider {
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(value);
 	}
 
-	@SuppressWarnings("unused")
 	private Map<String, Object> parseClaims(String token) {
 		String[] parts = token.split("\\.");
 		if (parts.length != 3) {
@@ -114,6 +120,19 @@ public class JwtTokenProvider {
 			return objectMapper.readValue(Base64.getUrlDecoder().decode(parts[1]), new TypeReference<>() {
 			});
 		} catch (IllegalArgumentException | IOException exception) {
+			throw new BusinessException(SecurityErrorCode.INVALID_TOKEN);
+		}
+	}
+
+	private void validateTokenType(Map<String, Object> claims, String expectedTokenType) {
+		if (!expectedTokenType.equals(claims.get("type"))) {
+			throw new BusinessException(SecurityErrorCode.INVALID_TOKEN);
+		}
+	}
+
+	private void validateExpiration(Map<String, Object> claims) {
+		Object expiration = claims.get("exp");
+		if (!(expiration instanceof Number number) || number.longValue() <= Instant.now().getEpochSecond()) {
 			throw new BusinessException(SecurityErrorCode.INVALID_TOKEN);
 		}
 	}
