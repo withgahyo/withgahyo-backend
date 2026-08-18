@@ -2,6 +2,7 @@ package com.withgahyo.domain.auth.service;
 
 import com.withgahyo.domain.auth.dto.AuthTokenResponse;
 import com.withgahyo.domain.auth.dto.AuthUserResponse;
+import com.withgahyo.domain.auth.dto.TokenRefreshResponse;
 import com.withgahyo.domain.auth.entity.RefreshToken;
 import com.withgahyo.domain.auth.oauth.OAuthProvider;
 import com.withgahyo.domain.auth.oauth.OAuthUserClient;
@@ -78,6 +79,30 @@ public class AuthService {
 	@Transactional
 	public void logout(Long userId) {
 		refreshTokenRepository.revokeAllByUserId(userId, LocalDateTime.now());
+	}
+
+	@Transactional
+	public TokenRefreshResponse refresh(String refreshToken) {
+		Long userId = jwtTokenProvider.getUserIdFromRefreshToken(refreshToken);
+		RefreshToken storedRefreshToken = refreshTokenRepository.findByToken(refreshToken)
+			.orElseThrow(() -> new BusinessException(SecurityErrorCode.INVALID_TOKEN));
+
+		LocalDateTime now = LocalDateTime.now();
+		if (!storedRefreshToken.isOwnedBy(userId)) {
+			throw new BusinessException(SecurityErrorCode.INVALID_TOKEN);
+		}
+		if (!storedRefreshToken.isActive(now)) {
+			refreshTokenRepository.revokeAllByUserId(userId, now);
+			throw new BusinessException(SecurityErrorCode.INVALID_TOKEN);
+		}
+
+		storedRefreshToken.revoke(now);
+		User user = storedRefreshToken.getUser();
+		String newAccessToken = jwtTokenProvider.createAccessToken(userId);
+		String newRefreshToken = jwtTokenProvider.createRefreshToken(userId);
+		refreshTokenRepository.save(RefreshToken.create(user, newRefreshToken, jwtTokenProvider.getRefreshTokenExpiresAt()));
+
+		return TokenRefreshResponse.of(newAccessToken, newRefreshToken, jwtTokenProvider.getAccessTokenExpiresIn());
 	}
 
 	private AuthTokenResponse login(OAuthProvider provider, String oauthAccessToken) {

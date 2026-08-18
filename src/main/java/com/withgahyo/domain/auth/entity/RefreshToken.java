@@ -51,6 +51,18 @@ public class RefreshToken {
 		return refreshToken;
 	}
 
+	public boolean isOwnedBy(Long userId) {
+		return user.getUserId().equals(userId);
+	}
+
+	public boolean isActive(LocalDateTime now) {
+		return revokedAt == null && expiresAt != null && expiresAt.isAfter(now);
+	}
+
+	public void revoke(LocalDateTime revokedAt) {
+		this.revokedAt = revokedAt;
+	}
+
 	@PrePersist
 	void prePersist() {
 		this.createdAt = LocalDateTime.now();

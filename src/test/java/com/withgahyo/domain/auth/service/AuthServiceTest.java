@@ -1,12 +1,14 @@
 package com.withgahyo.domain.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.withgahyo.domain.auth.dto.AuthTokenResponse;
+import com.withgahyo.domain.auth.dto.TokenRefreshResponse;
 import com.withgahyo.domain.auth.entity.RefreshToken;
 import com.withgahyo.domain.auth.oauth.OAuthProvider;
 import com.withgahyo.domain.auth.oauth.OAuthUserClient;
@@ -15,6 +17,7 @@ import com.withgahyo.domain.auth.repository.RefreshTokenRepository;
 import com.withgahyo.domain.auth.token.JwtTokenProvider;
 import com.withgahyo.domain.user.entity.User;
 import com.withgahyo.domain.user.repository.UserRepository;
+import com.withgahyo.global.exception.BusinessException;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -164,6 +167,51 @@ class AuthServiceTest {
 		authService.logout(1L);
 
 		verify(refreshTokenRepository).revokeAllByUserId(eq(1L), any(LocalDateTime.class));
+	}
+
+	@Test
+	void refresh_success_rotatesRefreshToken() {
+		User user = userWithId(User.create("KAKAO", "kakao-1", "같이가효", null), 1L);
+		RefreshToken storedRefreshToken = RefreshToken.create(
+			user,
+			"old-refresh-token",
+			LocalDateTime.now().plusDays(1)
+		);
+
+		given(jwtTokenProvider.getUserIdFromRefreshToken("old-refresh-token")).willReturn(1L);
+		given(refreshTokenRepository.findByToken("old-refresh-token")).willReturn(Optional.of(storedRefreshToken));
+		given(jwtTokenProvider.createAccessToken(1L)).willReturn("new-access-token");
+		given(jwtTokenProvider.createRefreshToken(1L)).willReturn("new-refresh-token");
+		given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(3600L);
+
+		TokenRefreshResponse response = authService.refresh("old-refresh-token");
+
+		assertThat(response.accessToken()).isEqualTo("new-access-token");
+		assertThat(response.refreshToken()).isEqualTo("new-refresh-token");
+		assertThat(response.tokenType()).isEqualTo("Bearer");
+		assertThat(response.expiresIn()).isEqualTo(3600L);
+		assertThat(storedRefreshToken.getRevokedAt()).isNotNull();
+
+		ArgumentCaptor<RefreshToken> refreshTokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
+		verify(refreshTokenRepository).save(refreshTokenCaptor.capture());
+		assertThat(refreshTokenCaptor.getValue().getToken()).isEqualTo("new-refresh-token");
+	}
+
+	@Test
+	void refresh_fail_whenRefreshTokenAlreadyRevoked() {
+		User user = userWithId(User.create("KAKAO", "kakao-1", "같이가효", null), 1L);
+		RefreshToken storedRefreshToken = RefreshToken.create(
+			user,
+			"revoked-refresh-token",
+			LocalDateTime.now().plusDays(1)
+		);
+		storedRefreshToken.revoke(LocalDateTime.now());
+
+		given(jwtTokenProvider.getUserIdFromRefreshToken("revoked-refresh-token")).willReturn(1L);
+		given(refreshTokenRepository.findByToken("revoked-refresh-token")).willReturn(Optional.of(storedRefreshToken));
+
+		assertThatThrownBy(() -> authService.refresh("revoked-refresh-token"))
+			.isInstanceOf(BusinessException.class);
 	}
 
 	private User userWithId(User user, Long userId) {

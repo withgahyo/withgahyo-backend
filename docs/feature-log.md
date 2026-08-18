@@ -16,6 +16,7 @@
 | 2026-08-19 | feat/1-auth-api | 카카오 소셜 로그인 기반 구현 | Notion AUTH 명세에 맞춰 카카오 OAuth 사용자 정보로 신규 가입 또는 탈퇴 계정 복구를 수행하고, JWT Access Token과 서버 저장 Refresh Token을 발급하도록 `domain.auth` 기반 구조를 추가했습니다. Refresh Token Rotation 요구를 지원하기 위해 `refresh_token` 엔티티와 ERD 기록을 추가했습니다. |
 | 2026-08-19 | feat/1-auth-api | 구글 소셜 로그인 구현 | 구글 OAuth 사용자 정보의 `sub`, `name`, `picture`를 서비스 사용자 식별과 프로필 갱신에 사용하고, 카카오 로그인과 같은 JWT·Refresh Token 발급 흐름을 재사용하도록 구현했습니다. |
 | 2026-08-19 | feat/1-auth-api | 로그아웃 구현 | JWT Access Token으로 인증된 사용자 ID를 SecurityContext에 저장하고, 로그아웃 시 해당 사용자의 활성 Refresh Token 세션을 모두 폐기하도록 구현했습니다. |
+| 2026-08-19 | feat/1-auth-api | 토큰 재발급 구현 | Refresh Token JWT와 서버 저장 세션을 함께 검증하고, 정상 재발급 시 기존 Refresh Token을 폐기한 뒤 새 Access Token과 Refresh Token을 발급하도록 Rotation을 구현했습니다. |
 | YYYY-MM-DD | #이슈번호 / 이슈명 | 무엇을 구현했는지 | 왜 이 방식으로 구현했고, 어떤 흐름으로 구현했는지 |
 
 ## 기록

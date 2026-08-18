@@ -2,6 +2,8 @@ package com.withgahyo.domain.auth.controller;
 
 import com.withgahyo.domain.auth.dto.AuthTokenResponse;
 import com.withgahyo.domain.auth.dto.SocialLoginRequest;
+import com.withgahyo.domain.auth.dto.TokenRefreshRequest;
+import com.withgahyo.domain.auth.dto.TokenRefreshResponse;
 import com.withgahyo.domain.auth.service.AuthService;
 import com.withgahyo.global.exception.BusinessException;
 import com.withgahyo.global.exception.code.SecurityErrorCode;
@@ -41,5 +43,10 @@ public class AuthController {
 		}
 		authService.logout(authenticatedUser.userId());
 		return ApiResponse.ok();
+	}
+
+	@PostMapping("/token/refresh")
+	public ApiResponse<TokenRefreshResponse> refresh(@Valid @RequestBody TokenRefreshRequest request) {
+		return ApiResponse.success(authService.refresh(request.refreshToken()));
 	}
 }

@@ -67,6 +67,13 @@ public class JwtTokenProvider {
 		return Long.valueOf(claims.get("sub").toString());
 	}
 
+	public Long getUserIdFromRefreshToken(String refreshToken) {
+		Map<String, Object> claims = parseClaims(refreshToken);
+		validateTokenType(claims, TOKEN_TYPE_REFRESH);
+		validateExpiration(claims);
+		return Long.valueOf(claims.get("sub").toString());
+	}
+
 	private String createToken(Long userId, String tokenType, long expiresIn) {
 		long now = Instant.now().getEpochSecond();
 		Map<String, Object> header = Map.of(
