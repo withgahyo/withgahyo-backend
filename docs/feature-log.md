@@ -17,6 +17,7 @@
 | 2026-08-19 | feat/1-auth-api | 구글 소셜 로그인 구현 | 구글 OAuth 사용자 정보의 `sub`, `name`, `picture`를 서비스 사용자 식별과 프로필 갱신에 사용하고, 카카오 로그인과 같은 JWT·Refresh Token 발급 흐름을 재사용하도록 구현했습니다. |
 | 2026-08-19 | feat/1-auth-api | 로그아웃 구현 | JWT Access Token으로 인증된 사용자 ID를 SecurityContext에 저장하고, 로그아웃 시 해당 사용자의 활성 Refresh Token 세션을 모두 폐기하도록 구현했습니다. |
 | 2026-08-19 | feat/1-auth-api | 토큰 재발급 구현 | Refresh Token JWT와 서버 저장 세션을 함께 검증하고, 정상 재발급 시 기존 Refresh Token을 폐기한 뒤 새 Access Token과 Refresh Token을 발급하도록 Rotation을 구현했습니다. |
+| 2026-08-19 | feat/1-auth-api | 회원 탈퇴 구현 | 확정된 재가입 정책에 따라 회원 탈퇴 시 `users.deleted_at`을 설정하고 해당 사용자의 Refresh Token 세션을 모두 폐기합니다. 가족 관계 row는 삭제하지 않고, 같은 소셜 계정 재로그인 시 기존 row를 복구하는 로그인 흐름과 연계했습니다. |
 | YYYY-MM-DD | #이슈번호 / 이슈명 | 무엇을 구현했는지 | 왜 이 방식으로 구현했고, 어떤 흐름으로 구현했는지 |
 
 ## 기록
