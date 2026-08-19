@@ -30,4 +30,12 @@ public class UserTourismPreference {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "tourism_preference_id", nullable = false)
 	private TourismPreference tourismPreference;
+
+	public static UserTourismPreference create(User user, TourismPreference tourismPreference) {
+		UserTourismPreference preference = new UserTourismPreference();
+		preference.id = new UserTourismPreferenceId(user.getUserId(), tourismPreference.getTourismPreferenceId());
+		preference.user = user;
+		preference.tourismPreference = tourismPreference;
+		return preference;
+	}
 }

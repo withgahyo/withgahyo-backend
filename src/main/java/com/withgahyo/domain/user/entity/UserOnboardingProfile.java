@@ -59,4 +59,61 @@ public class UserOnboardingProfile {
 	void updateTimestamp() {
 		this.updatedAt = LocalDateTime.now();
 	}
+
+	public static UserOnboardingProfile create(User user) {
+		UserOnboardingProfile profile = new UserOnboardingProfile();
+		profile.user = user;
+		profile.userId = user.getUserId();
+		profile.onboardingCompleted = false;
+		return profile;
+	}
+
+	// TODO: 여행 기간 허용값이 확정되면 String 대신 enum 타입으로 전환
+	public void updateTripDuration(String tripDuration) {
+		this.tripDuration = tripDuration;
+	}
+
+	// TODO: 컨디션 항목별 허용값이 확정되면 String 대신 enum 타입으로 전환
+	public void updateConditions(
+		String walkingTolerance,
+		String restPreference,
+		String stairsPreference,
+		String slopePreference,
+		String spicyPreference
+	) {
+		this.walkingTolerance = walkingTolerance;
+		this.restPreference = restPreference;
+		this.stairsPreference = stairsPreference;
+		this.slopePreference = slopePreference;
+		this.spicyPreference = spicyPreference;
+	}
+
+	public void updateProfile(
+		String tripDuration,
+		String walkingTolerance,
+		String restPreference,
+		String stairsPreference,
+		String slopePreference,
+		String spicyPreference
+	) {
+		updateTripDuration(tripDuration);
+		updateConditions(walkingTolerance, restPreference, stairsPreference, slopePreference, spicyPreference);
+	}
+
+	public void complete() {
+		this.onboardingCompleted = true;
+	}
+
+	public boolean isProfileFilled() {
+		return isNotBlank(tripDuration)
+			&& isNotBlank(walkingTolerance)
+			&& isNotBlank(restPreference)
+			&& isNotBlank(stairsPreference)
+			&& isNotBlank(slopePreference)
+			&& isNotBlank(spicyPreference);
+	}
+
+	private boolean isNotBlank(String value) {
+		return value != null && !value.isBlank();
+	}
 }
