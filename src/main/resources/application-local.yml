@@ -29,3 +29,10 @@ logging:
 auth:
   jwt:
     secret: ${JWT_SECRET:local-development-secret-must-be-changed}
+  oauth:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID:local-kakao-client-id}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:local-google-client-id}
+      client-secret: ${GOOGLE_CLIENT_SECRET:local-google-client-secret}

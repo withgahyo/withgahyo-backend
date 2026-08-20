@@ -4,5 +4,5 @@ public interface OAuthUserClient {
 
 	OAuthProvider getProvider();
 
-	OAuthUserInfo getUserInfo(String oauthAccessToken);
+	OAuthUserInfo getUserInfo(String authorizationCode, String redirectUri);
 }

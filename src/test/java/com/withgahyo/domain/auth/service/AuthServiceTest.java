@@ -77,14 +77,18 @@ class AuthServiceTest {
 			"https://example.com/profile.png"
 		), 1L);
 
-		given(kakaoOAuthUserClient.getUserInfo("oauth-token")).willReturn(oauthUserInfo);
+		given(kakaoOAuthUserClient.getUserInfo("authorization-code", "http://localhost:5173/oauth/kakao/callback"))
+			.willReturn(oauthUserInfo);
 		given(userRepository.findByProviderAndProviderUserId("KAKAO", "kakao-1")).willReturn(Optional.empty());
 		given(userRepository.save(any(User.class))).willReturn(savedUser);
 		given(jwtTokenProvider.createAccessToken(1L)).willReturn("access-token");
 		given(jwtTokenProvider.createRefreshToken(1L)).willReturn("refresh-token");
 		given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(3600L);
 
-		AuthTokenResponse response = authService.loginWithKakao("oauth-token");
+		AuthTokenResponse response = authService.loginWithKakao(
+			"authorization-code",
+			"http://localhost:5173/oauth/kakao/callback"
+		);
 
 		assertThat(response.accessToken()).isEqualTo("access-token");
 		assertThat(response.refreshToken()).isEqualTo("refresh-token");
@@ -117,13 +121,17 @@ class AuthServiceTest {
 		), 1L);
 		deletedUser.withdraw(LocalDateTime.of(2026, 8, 19, 10, 0));
 
-		given(kakaoOAuthUserClient.getUserInfo("oauth-token")).willReturn(oauthUserInfo);
+		given(kakaoOAuthUserClient.getUserInfo("authorization-code", "http://localhost:5173/oauth/kakao/callback"))
+			.willReturn(oauthUserInfo);
 		given(userRepository.findByProviderAndProviderUserId("KAKAO", "kakao-1")).willReturn(Optional.of(deletedUser));
 		given(jwtTokenProvider.createAccessToken(1L)).willReturn("access-token");
 		given(jwtTokenProvider.createRefreshToken(1L)).willReturn("refresh-token");
 		given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(3600L);
 
-		AuthTokenResponse response = authService.loginWithKakao("oauth-token");
+		AuthTokenResponse response = authService.loginWithKakao(
+			"authorization-code",
+			"http://localhost:5173/oauth/kakao/callback"
+		);
 
 		assertThat(response.isNewUser()).isFalse();
 		assertThat(response.user().nickname()).isEqualTo("최신닉네임");
@@ -146,13 +154,17 @@ class AuthServiceTest {
 			"https://example.com/old-google.png"
 		), 2L);
 
-		given(googleOAuthUserClient.getUserInfo("google-oauth-token")).willReturn(oauthUserInfo);
+		given(googleOAuthUserClient.getUserInfo("google-authorization-code", "http://localhost:5173/oauth/google/callback"))
+			.willReturn(oauthUserInfo);
 		given(userRepository.findByProviderAndProviderUserId("GOOGLE", "google-1")).willReturn(Optional.of(existingUser));
 		given(jwtTokenProvider.createAccessToken(2L)).willReturn("google-access-token");
 		given(jwtTokenProvider.createRefreshToken(2L)).willReturn("google-refresh-token");
 		given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(3600L);
 
-		AuthTokenResponse response = authService.loginWithGoogle("google-oauth-token");
+		AuthTokenResponse response = authService.loginWithGoogle(
+			"google-authorization-code",
+			"http://localhost:5173/oauth/google/callback"
+		);
 
 		assertThat(response.accessToken()).isEqualTo("google-access-token");
 		assertThat(response.refreshToken()).isEqualTo("google-refresh-token");
@@ -180,6 +192,7 @@ class AuthServiceTest {
 
 		given(jwtTokenProvider.getUserIdFromRefreshToken("old-refresh-token")).willReturn(1L);
 		given(refreshTokenRepository.findByToken("old-refresh-token")).willReturn(Optional.of(storedRefreshToken));
+		given(refreshTokenRepository.revokeIfActive(eq("old-refresh-token"), any(LocalDateTime.class))).willReturn(1);
 		given(jwtTokenProvider.createAccessToken(1L)).willReturn("new-access-token");
 		given(jwtTokenProvider.createRefreshToken(1L)).willReturn("new-refresh-token");
 		given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(3600L);

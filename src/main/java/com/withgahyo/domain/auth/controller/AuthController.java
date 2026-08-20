@@ -28,12 +28,12 @@ public class AuthController {
 
 	@PostMapping("/login/kakao")
 	public ApiResponse<AuthTokenResponse> loginWithKakao(@Valid @RequestBody SocialLoginRequest request) {
-		return ApiResponse.success(authService.loginWithKakao(request.oauthAccessToken()));
+		return ApiResponse.success(authService.loginWithKakao(request.authorizationCode(), request.redirectUri()));
 	}
 
 	@PostMapping("/login/google")
 	public ApiResponse<AuthTokenResponse> loginWithGoogle(@Valid @RequestBody SocialLoginRequest request) {
-		return ApiResponse.success(authService.loginWithGoogle(request.oauthAccessToken()));
+		return ApiResponse.success(authService.loginWithGoogle(request.authorizationCode(), request.redirectUri()));
 	}
 
 	@PostMapping("/logout")

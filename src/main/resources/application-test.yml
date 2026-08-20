@@ -23,4 +23,11 @@ logging:
 
 auth:
   jwt:
-    secret: ${JWT_SECRET:test-secret-for-auth-tests}
+    secret: ${JWT_SECRET:test-secret-for-auth-tests-minimum-32-bytes-long}
+  oauth:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID:test-kakao-client-id}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:test-google-client-id}
+      client-secret: ${GOOGLE_CLIENT_SECRET:test-google-client-secret}
