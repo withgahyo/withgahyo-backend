@@ -13,6 +13,7 @@
 
 | 날짜 | 이슈 | 작업 내용 | 왜/어떻게 구현했는지 |
 | --- | --- | --- | --- |
+| 2026-08-20 | feat/1-auth-api | 소셜 로그인 Authorization Code 방식 전환 | 프런트엔드가 제공자 Access Token을 백엔드로 직접 전달하지 않도록 로그인 요청을 `authorizationCode`, `redirectUri` 기반으로 변경했습니다. 백엔드가 카카오/구글 토큰 엔드포인트에서 Access Token을 발급받은 뒤 사용자 정보를 조회하며, OAuth Client ID와 Secret은 서버 환경변수로 관리합니다. |
 | 2026-08-19 | feat/1-auth-api | 카카오 소셜 로그인 기반 구현 | Notion AUTH 명세에 맞춰 카카오 OAuth 사용자 정보로 신규 가입 또는 탈퇴 계정 복구를 수행하고, JWT Access Token과 서버 저장 Refresh Token을 발급하도록 `domain.auth` 기반 구조를 추가했습니다. Refresh Token Rotation 요구를 지원하기 위해 `refresh_token` 엔티티와 ERD 기록을 추가했습니다. |
 | 2026-08-19 | feat/1-auth-api | 구글 소셜 로그인 구현 | 구글 OAuth 사용자 정보의 `sub`, `name`, `picture`를 서비스 사용자 식별과 프로필 갱신에 사용하고, 카카오 로그인과 같은 JWT·Refresh Token 발급 흐름을 재사용하도록 구현했습니다. |
 | 2026-08-19 | feat/1-auth-api | 로그아웃 구현 | JWT Access Token으로 인증된 사용자 ID를 SecurityContext에 저장하고, 로그아웃 시 해당 사용자의 활성 Refresh Token 세션을 모두 폐기하도록 구현했습니다. |
