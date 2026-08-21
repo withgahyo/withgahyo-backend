@@ -1,6 +1,14 @@
 # API 설계
 
-이 문서는 백엔드 개발 에이전트가 컨트롤러, 서비스, DTO를 만들 때 기준으로 삼는 API 목록입니다. 세부 request/response 필드는 기능 구현 시 Notion API 명세와 화면 요구사항에 맞춰 보강합니다.
+이 문서는 백엔드 개발 에이전트가 컨트롤러, 서비스, DTO를 만들 때 기준으로 삼는 API 목록입니다.
+
+최신 기준 문서는 Notion `API 명세서`의 `API 목록` 데이터베이스입니다.
+
+- Notion 문서: `https://app.notion.com/p/3bf69b42aa5b8068a880df3836b5e647`
+- 동기화 기준 시각: 2026-08-20
+- API 목록 기준: Notion `API 목록` 데이터베이스 53개 행
+
+세부 request/response 필드는 기능 구현 시 Notion 각 API 상세 페이지와 화면 요구사항에 맞춰 보강합니다.
 
 ## 기본 규칙
 
@@ -9,10 +17,26 @@
 | Base URL | `https://api.gatigahyo.com` |
 | Base Path | `/api/v1` |
 | Content-Type | `application/json` |
+| 인증 방식 | Bearer JWT |
 | 인증 헤더 | `Authorization: Bearer {accessToken}` |
 
 삭제 API는 별도 명시가 없으면 soft delete를 기본으로 합니다.
 (예외: `review`는 `deleted_at` 컬럼이 없어 hard delete로 처리합니다.)
+
+## HTTP 상태 코드
+
+| Status | 의미 |
+| --- | --- |
+| 200 | 조회·수정 성공 |
+| 201 | 리소스 생성 성공 |
+| 202 | 비동기 작업 요청 접수 |
+| 204 | 응답 본문 없는 성공 |
+| 400 | 잘못된 요청 |
+| 401 | 인증 실패 |
+| 403 | 접근 권한 없음 |
+| 404 | 리소스 없음 |
+| 409 | 중복·상태 충돌 |
+| 500 | 서버 내부 오류 |
 
 ## 공통 성공 응답
 
@@ -99,165 +123,166 @@ com.withgahyo.domain.album.exception.AlbumErrorCode
 
 ## API 목록
 
-### 회원/인증
+### AUTH
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `POST` | `/api/v1/auth/login/kakao` | 불필요 | 카카오 로그인 |
-| `POST` | `/api/v1/auth/login/google` | 불필요 | 구글 로그인 |
-| `POST` | `/api/v1/auth/reissue` | 불필요 | access token 재발급 |
-| `POST` | `/api/v1/auth/logout` | 필요 | 로그아웃 |
-| `GET` | `/api/v1/users/me` | 필요 | 내 정보 조회 |
-| `PATCH` | `/api/v1/users/me` | 필요 | 내 프로필 수정 |
-| `DELETE` | `/api/v1/users/me` | 필요 | 회원 탈퇴 |
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-AUTH-001 | `POST` | `/api/v1/auth/login/kakao` | 불필요 | 카카오 소셜 로그인 |
+| API-AUTH-002 | `POST` | `/api/v1/auth/login/google` | 불필요 | 구글 소셜 로그인 |
+| API-AUTH-003 | `POST` | `/api/v1/auth/logout` | 필요 | 로그아웃 |
+| API-AUTH-004 | `POST` | `/api/v1/auth/token/refresh` | 불필요 | 토큰 재발급 |
+| API-AUTH-005 | `DELETE` | `/api/v1/users/me` | 필요 | 회원 탈퇴 |
 
-### 온보딩/가족 구성원
+#### 소셜 로그인 요청 정책
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/onboarding` | 필요 | 온보딩 진행 상태 조회 |
-| `PUT` | `/api/v1/onboarding` | 필요 | 온보딩 정보 저장 또는 수정 |
-| `POST` | `/api/v1/onboarding/complete` | 필요 | 온보딩 완료 처리 |
-| `GET` | `/api/v1/family-members` | 필요 | 가족 구성원 목록 조회 |
-| `POST` | `/api/v1/family-members` | 필요 | 가족 구성원 등록 |
-| `GET` | `/api/v1/family-members/{familyMemberId}` | 필요 | 가족 구성원 상세 조회 |
-| `PATCH` | `/api/v1/family-members/{familyMemberId}` | 필요 | 가족 구성원 정보 수정 |
-| `DELETE` | `/api/v1/family-members/{familyMemberId}` | 필요 | 가족 구성원 삭제 |
-| `PUT` | `/api/v1/family-members/{familyMemberId}/preferences` | 필요 | 가족 구성원 관광/음식/이동 선호 저장 |
-| `GET` | `/api/v1/family-members/{familyMemberId}/preferences` | 필요 | 가족 구성원 선호 조회 |
+카카오/구글 로그인은 프런트엔드가 각 OAuth 제공자에게서 받은 Authorization Code를 백엔드로 전달하고, 백엔드가 제공자 토큰 엔드포인트에서 Access Token을 발급받아 사용자 정보를 조회합니다. 제공자 Access Token을 프런트엔드에서 백엔드로 직접 전달하지 않습니다.
 
-`PUT /api/v1/family-members/{familyMemberId}/preferences`는 하나의 요청으로 가족 구성원의 선호 정보를 전체 교체합니다. 구현 시 하나의 트랜잭션 안에서 `family_member`의 이동/음식 관련 컬럼을 수정하고, `family_member_tourism_preference`, `family_member_facility` 매핑을 삭제 후 재삽입합니다.
+`POST /api/v1/auth/login/kakao`
 
-### 홈
+```json
+{
+  "authorizationCode": "kakao-authorization-code",
+  "redirectUri": "http://localhost:5173/oauth/kakao/callback"
+}
+```
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/home` | 필요 | 홈 화면 요약 조회 |
-| `GET` | `/api/v1/home/courses/upcoming` | 필요 | 다가오는 코스 목록 조회 |
-| `GET` | `/api/v1/home/albums/recent` | 필요 | 최근 앨범 목록 조회 |
-| `GET` | `/api/v1/home/notifications/recent` | 필요 | 최근 알림 목록 조회 |
+`POST /api/v1/auth/login/google`
 
-### 지역/장소/선택지
+```json
+{
+  "authorizationCode": "google-authorization-code",
+  "redirectUri": "http://localhost:5173/oauth/google/callback"
+}
+```
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/regions` | 필요 | 지역 목록 조회 |
-| `GET` | `/api/v1/places` | 필요 | 장소 검색 |
-| `GET` | `/api/v1/places/{placeId}` | 필요 | 장소 상세 조회 |
-| `GET` | `/api/v1/places/{placeId}/accessibilities` | 필요 | 장소 접근성 정보 조회 |
-| `GET` | `/api/v1/facilities` | 필요 | 편의시설 선택지 조회 |
-| `GET` | `/api/v1/tourism-preferences` | 필요 | 관광 취향 선택지 조회 |
-| `GET` | `/api/v1/course-keywords` | 필요 | 코스 관심 키워드 선택지 조회 |
+| 필드 | 필수 | 설명 |
+| --- | --- | --- |
+| `authorizationCode` | 예 | OAuth 제공자의 인가 코드입니다. |
+| `redirectUri` | 예 | 인가 코드 발급 시 사용한 Redirect URI와 동일해야 합니다. |
 
-### 코스 생성/관리
+OAuth 앱 키와 시크릿은 백엔드 환경변수로 관리합니다.
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/courses` | 필요 | 내 코스 목록 조회 |
-| `POST` | `/api/v1/courses` | 필요 | 코스 직접 생성 |
-| `GET` | `/api/v1/courses/{courseId}` | 필요 | 코스 상세 조회 |
-| `PATCH` | `/api/v1/courses/{courseId}` | 필요 | 코스 기본 정보 수정 |
-| `DELETE` | `/api/v1/courses/{courseId}` | 필요 | 코스 삭제 |
-| `POST` | `/api/v1/courses/{courseId}/participants` | 필요 | 코스 참여 가족 구성원 추가 |
-| `GET` | `/api/v1/courses/{courseId}/participants` | 필요 | 코스 참여자 목록 조회 |
-| `DELETE` | `/api/v1/courses/{courseId}/participants/{participantId}` | 필요 | 코스 참여자 삭제 |
-| `PUT` | `/api/v1/courses/{courseId}/required-places` | 필요 | 코스 필수 방문 장소 저장 |
-| `GET` | `/api/v1/courses/{courseId}/required-places` | 필요 | 코스 필수 방문 장소 조회 |
-| `PUT` | `/api/v1/courses/{courseId}/keywords` | 필요 | 코스 관심 키워드 저장 |
-| `GET` | `/api/v1/courses/{courseId}/keywords` | 필요 | 코스 관심 키워드 조회 |
-| `PUT` | `/api/v1/courses/{courseId}/schedule-items` | 필요 | 일자별 방문 일정 저장 |
-| `GET` | `/api/v1/courses/{courseId}/schedule-items` | 필요 | 일자별 방문 일정 조회 |
-| `PATCH` | `/api/v1/courses/{courseId}/schedule-items/{scheduleItemId}` | 필요 | 방문 일정 단건 수정 |
-| `DELETE` | `/api/v1/courses/{courseId}/schedule-items/{scheduleItemId}` | 필요 | 방문 일정 단건 삭제 |
+| 환경변수 | 설명 |
+| --- | --- |
+| `KAKAO_CLIENT_ID` | 카카오 REST API Key |
+| `KAKAO_CLIENT_SECRET` | 카카오 Client Secret. 사용하지 않으면 빈 값 허용 |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret |
 
-### AI 추천
+### ONB
 
-AI 엔진은 추후 별도 레포에서 개발하고, 백엔드는 추천 요청/상태/결과 저장과 API 응답을 담당합니다.
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-ONB-001 | `GET` | `/api/v1/users/me/onboarding` | 필요 | 온보딩 정보 조회 |
+| API-ONB-002 | `PUT` | `/api/v1/users/me/onboarding` | 필요 | 온보딩 정보 저장·수정 |
+| API-ONB-003 | `GET` | `/api/v1/onboarding/tourism-preferences` | 필요 | 관광 취향 선택지 조회 |
+| API-ONB-004 | `GET` | `/api/v1/onboarding/food-preferences` | 필요 | 식사 취향 선택지 조회 |
+| API-ONB-005 | `PATCH` | `/api/v1/users/me/onboarding/trip-duration` | 필요 | 여행 기간 저장 |
+| API-ONB-006 | `PATCH` | `/api/v1/users/me/onboarding/tourism-preferences` | 필요 | 관광 취향 저장 |
+| API-ONB-007 | `PATCH` | `/api/v1/users/me/onboarding/food-preferences` | 필요 | 식사 취향 저장 |
+| API-ONB-008 | `PATCH` | `/api/v1/users/me/onboarding/conditions` | 필요 | 여행 컨디션 저장 |
+| API-ONB-009 | `POST` | `/api/v1/users/me/onboarding/complete` | 필요 | 온보딩 완료 |
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `POST` | `/api/v1/courses/recommendations` | 필요 | AI 코스 추천 요청 |
-| `GET` | `/api/v1/courses/recommendations/{recommendationId}` | 필요 | AI 추천 생성 상태 조회 |
-| `POST` | `/api/v1/courses/recommendations/{recommendationId}/confirm` | 필요 | 추천 결과를 코스로 확정 |
+### FAM
 
-### 코스 찜
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-FAM-001 | `GET` | `/api/v1/family/members` | 필요 | 가족 구성원 조회 |
+| API-FAM-002 | `POST` | `/api/v1/family/members` | 필요 | 가족 구성원 연결 |
+| API-FAM-003 | `DELETE` | `/api/v1/family/members/{familyMemberId}` | 필요 | 가족 연결 해제 |
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/course-likes` | 필요 | 내가 찜한 코스 목록 조회 |
-| `POST` | `/api/v1/courses/{courseId}/like` | 필요 | 코스 찜 등록 |
-| `DELETE` | `/api/v1/courses/{courseId}/like` | 필요 | 코스 찜 취소 |
+### HOME
 
-### 여행 앨범/사진
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-HOME-001 | `GET` | `/api/v1/home` | 필요 | 홈 정보 조회 |
+| API-HOME-002 | `GET` | `/api/v1/courses/popular` | 필요 | 인기 코스 조회 |
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/albums` | 필요 | 내 앨범 목록 조회 |
-| `POST` | `/api/v1/albums` | 필요 | 앨범 생성 |
-| `GET` | `/api/v1/albums/{albumId}` | 필요 | 앨범 상세 조회 |
-| `PATCH` | `/api/v1/albums/{albumId}` | 필요 | 앨범 정보 수정 |
-| `DELETE` | `/api/v1/albums/{albumId}` | 필요 | 앨범 삭제 |
-| `POST` | `/api/v1/albums/{albumId}/photos` | 필요 | 사진 등록 |
-| `GET` | `/api/v1/albums/{albumId}/photos` | 필요 | 앨범 사진 목록 조회 |
-| `GET` | `/api/v1/photos/{photoId}` | 필요 | 사진 상세 조회 |
-| `PATCH` | `/api/v1/photos/{photoId}` | 필요 | 사진 정보 수정 |
-| `DELETE` | `/api/v1/photos/{photoId}` | 필요 | 사진 삭제 |
-| `PATCH` | `/api/v1/albums/{albumId}/cover-photo` | 필요 | 앨범 커버 사진 변경 |
+### CRS
 
-### 만족도 평가/리뷰
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-CRS-001 | `GET` | `/api/v1/regions/search` | 필요 | 여행 지역 검색 |
+| API-CRS-002 | `GET` | `/api/v1/places/search` | 필요 | 꼭 가고 싶은 장소 검색 |
+| API-CRS-003 | `GET` | `/api/v1/course-keywords/suggestions` | 필요 | 관심 키워드 추천 |
+| API-CRS-004 | `GET` | `/api/v1/users/me/family-members` | 필요 | 코스 생성용 가족 선택지 조회 |
+| API-CRS-005 | `POST` | `/api/v1/courses` | 필요 | 코스 초안 생성 |
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/courses/{courseId}/review` | 필요 | 코스 리뷰 조회 |
-| `POST` | `/api/v1/courses/{courseId}/review` | 필요 | 코스 만족도 평가 등록 |
-| `PATCH` | `/api/v1/reviews/{reviewId}` | 필요 | 리뷰 수정 |
-| `DELETE` | `/api/v1/reviews/{reviewId}` | 필요 | 리뷰 삭제. `review`는 `deleted_at`이 없어 hard delete 처리 |
+### REC
 
-### 마이페이지
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-REC-001 | `POST` | `/api/v1/courses/{courseId}/generations` | 필요 | AI 추천 생성 시작 |
+| API-REC-002 | `GET` | `/api/v1/course-generations/{generationId}` | 필요 | AI 추천 생성 상태 조회 |
+| API-REC-003 | `GET` | `/api/v1/course-generations/{generationId}/candidates` | 필요 | AI 추천 후보 목록 조회 |
+| API-REC-004 | `GET` | `/api/v1/course-generations/{generationId}/candidates/{candidateId}` | 필요 | AI 추천 후보 상세 조회 |
+| API-REC-005 | `POST` | `/api/v1/course-generations/{generationId}/selection` | 필요 | AI 추천 후보 확정 |
 
-마이페이지 하위 API는 도메인 API와 같은 원천 데이터를 사용하되, 마이페이지 화면에 맞는 요약 필드, 정렬, 페이지네이션을 제공하는 UI 전용 조회 API입니다. 별도 테이블을 만들지 않고 각 도메인의 조회 로직을 조합합니다.
+### EXP
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/mypage` | 필요 | 마이페이지 요약 조회 |
-| `GET` | `/api/v1/mypage/courses` | 필요 | 내가 만든 코스 목록 조회 |
-| `GET` | `/api/v1/mypage/albums` | 필요 | 내 앨범 목록 조회 |
-| `GET` | `/api/v1/mypage/reviews` | 필요 | 내가 작성한 리뷰 목록 조회 |
-| `GET` | `/api/v1/mypage/liked-courses` | 필요 | 내가 찜한 코스 목록 조회 |
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-EXP-001 | `GET` | `/api/v1/courses` | 필요 | 코스 검색 |
+| API-EXP-003 | `GET` | `/api/v1/courses/similar-family` | 필요 | 유사 가족 코스 조회 |
+| API-EXP-004 | `GET` | `/api/v1/courses/{courseId}` | 필요 | 코스 상세 조회 |
+| API-EXP-005 | `POST` | `/api/v1/courses/{courseId}/likes` | 필요 | 코스 찜 등록 |
+| API-EXP-006 | `DELETE` | `/api/v1/courses/{courseId}/likes` | 필요 | 코스 찜 해제 |
+| API-EXP-007 | `POST` | `/api/v1/courses/{courseId}/confirm` | 필요 | 코스 확정 |
+| API-EXP-008 | `PATCH` | `/api/v1/courses/{courseId}` | 필요 | 코스 기본 정보 수정 |
+| API-EXP-009 | `DELETE` | `/api/v1/courses/{courseId}` | 필요 | 코스 삭제 |
 
-### 알림
+### ALB
 
-| Method | Path | 인증 | 설명 |
-| --- | --- | --- | --- |
-| `GET` | `/api/v1/notifications` | 필요 | 알림 목록 조회 |
-| `GET` | `/api/v1/notifications/unread-count` | 필요 | 읽지 않은 알림 수 조회 |
-| `PATCH` | `/api/v1/notifications/{notificationId}/read` | 필요 | 알림 읽음 처리 |
-| `PATCH` | `/api/v1/notifications/read-all` | 필요 | 전체 알림 읽음 처리 |
-| `DELETE` | `/api/v1/notifications/{notificationId}` | 필요 | 알림 삭제 |
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-ALB-001 | `GET` | `/api/v1/albums` | 필요 | 공동 앨범 목록 조회 |
+| API-ALB-002 | `GET` | `/api/v1/albums/{albumId}` | 필요 | 공동 앨범 상세 조회 |
+| API-ALB-003 | `POST` | `/api/v1/albums/{albumId}/photos/presigned-urls` | 필요 | 사진 업로드 Presigned URL 발급 |
+| API-ALB-004 | `POST` | `/api/v1/albums/{albumId}/photos/complete` | 필요 | 사진 업로드 완료 등록 |
+| API-ALB-005 | `POST` | `/api/v1/albums/{albumId}/videos` | 필요 | 여행 영상 생성 요청 |
+| API-ALB-006 | `GET` | `/api/v1/albums/{albumId}/videos/{jobId}` | 필요 | 여행 영상 생성 상태 조회 |
+| API-ALB-007 | `DELETE` | `/api/v1/albums/{albumId}/photos/{photoId}` | 필요 | 앨범 사진 삭제 |
+| API-ALB-008 | `PATCH` | `/api/v1/albums/{albumId}` | 필요 | 여행 앨범 정보 수정 |
+| API-ALB-009 | `PATCH` | `/api/v1/albums/{albumId}/photos/{photoId}` | 필요 | 앨범 사진 정보 수정 |
+
+### REV
+
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-REV-001 | `GET` | `/api/v1/users/me/reviews/pending` | 필요 | 만족도 평가 대상 조회 |
+| API-REV-002 | `POST` | `/api/v1/courses/{courseId}/reviews` | 필요 | 여행 만족도 등록 |
+| API-REV-003 | `GET` | `/api/v1/courses/{courseId}/review-form` | 필요 | 만족도 평가 폼 조회 |
+| API-REV-004 | `GET` | `/api/v1/courses/{courseId}/reviews/me` | 필요 | 내 만족도 평가 조회 |
+| API-REV-005 | `PATCH` | `/api/v1/courses/{courseId}/reviews/me` | 필요 | 만족도 평가 수정 |
+
+### MY
+
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-MY-001 | `GET` | `/api/v1/mypage` | 필요 | 내 프로필·여행 통계 조회 |
+| API-MY-002 | `PATCH` | `/api/v1/users/me` | 필요 | 내 프로필 수정 |
 
 ## 패키지 매핑
 
 | API 영역 | 패키지 |
 | --- | --- |
-| 회원/인증 | `domain.auth`, `domain.user` |
-| 온보딩/가족 구성원 | `domain.onboarding`, `domain.family` |
-| 지역/장소/편의시설 | `domain.region`, `domain.place`, `domain.facility` |
-| 관광 취향 | `domain.tourism` |
-| 코스 관심 키워드 | `domain.course.keyword` |
-| 코스 필수 방문 장소 | `domain.course.place` |
-| 코스 일정 | `domain.course.schedule` |
-| 코스 | `domain.course` |
-| AI 추천 | `domain.recommendation`, `infra.ai` |
-| 앨범/사진 | `domain.album`, `domain.photo` |
-| 리뷰 | `domain.review` |
-| 마이페이지 | `domain.mypage` |
-| 알림 | `domain.notification` |
+| AUTH | `domain.auth`, `domain.user` |
+| ONB | `domain.onboarding`, `domain.user`, `domain.family` |
+| FAM | `domain.family`, `domain.user` |
+| HOME | `domain.home` |
+| CRS | `domain.course`, `domain.place`, `domain.family` |
+| REC | `domain.recommendation`, `infra.ai` |
+| EXP | `domain.course` |
+| ALB | `domain.album`, `domain.video` |
+| REV | `domain.review` |
+| MY | `domain.mypage`, `domain.user` |
 
 ## 구현 시 주의사항
 
-- API path는 이 문서를 우선 기준으로 삼고, 화면/Notion 명세와 충돌하면 문서를 먼저 갱신합니다.
+- API path는 이 문서를 우선 기준으로 삼고, 화면/Notion 명세와 충돌하면 Notion 최신 `API 목록` 데이터베이스를 확인한 뒤 문서를 갱신합니다.
+- 각 API의 request/response, validation, error, 세부 정책은 Notion의 API 상세 페이지를 기준으로 구현합니다.
+- 가입 사용자 기반 가족 연결 정책과 충돌하는 가족 프로필 직접 생성·수정 방식은 사용하지 않습니다.
+- 사진 업로드는 Presigned URL 발급과 업로드 완료 등록 흐름을 기준으로 구현합니다.
+- 신규 여행 영상 생성 API는 앨범 하위 리소스로 구현합니다.
 - `home`, `mypage`는 여러 도메인을 조합하는 조회 API이므로 별도 테이블을 만들지 않습니다.
-- 마이페이지 하위 목록 API는 도메인 API와 같은 데이터를 사용하되, 마이페이지 화면에 맞는 요약 필드와 정렬 기준을 적용합니다.
-- `required-places`, `keywords`, `schedule-items`처럼 코스 하위 리소스는 `courseId` 하위 path로 둡니다.
 - 리뷰는 현재 ERD에 `deleted_at`이 없으므로 삭제가 필요하면 hard delete로 처리합니다.
-- 파일 업로드 방식은 추후 S3 등 저장소 결정 후 `multipart/form-data`로 별도 명시합니다.
