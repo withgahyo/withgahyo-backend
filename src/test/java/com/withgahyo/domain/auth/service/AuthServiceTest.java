@@ -144,12 +144,14 @@ class AuthServiceTest {
 		OAuthUserInfo oauthUserInfo = new OAuthUserInfo(
 			OAuthProvider.GOOGLE,
 			"google-1",
+			"google@example.com",
 			"구글유저",
 			"https://example.com/google.png"
 		);
 		User existingUser = userWithId(User.create(
 			"GOOGLE",
 			"google-1",
+			"old-google@example.com",
 			"이전구글",
 			"https://example.com/old-google.png"
 		), 2L);
@@ -170,6 +172,7 @@ class AuthServiceTest {
 		assertThat(response.refreshToken()).isEqualTo("google-refresh-token");
 		assertThat(response.isNewUser()).isFalse();
 		assertThat(response.user().userId()).isEqualTo(2L);
+		assertThat(response.user().email()).isEqualTo("google@example.com");
 		assertThat(response.user().nickname()).isEqualTo("구글유저");
 		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/google.png");
 	}
