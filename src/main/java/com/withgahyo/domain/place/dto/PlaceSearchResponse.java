@@ -29,7 +29,7 @@ public record PlaceSearchResponse(
 		private static PlaceResponse from(Place place) {
 			return new PlaceResponse(
 				place.getPlaceId(),
-				place.getContentTypeId(),
+				place.getSource(),
 				place.getContentId(),
 				place.getName(),
 				place.getCat1(),

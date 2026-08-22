@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public record ExternalPlaceSearchResult(
 	String source,
+	String contentTypeId,
 	String externalPlaceId,
 	String name,
 	String category,

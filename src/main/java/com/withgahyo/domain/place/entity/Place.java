@@ -41,6 +41,9 @@ public class Place {
 	@Column(name = "content_type_id", nullable = false, length = 20)
 	private String contentTypeId;
 
+	@Column(name = "source", nullable = false, length = 20)
+	private String source;
+
 	@Column(name = "cat1", length = 20)
 	private String cat1;
 
@@ -102,6 +105,7 @@ public class Place {
 	public static Place create(
 		String contentId,
 		String contentTypeId,
+		String source,
 		String category,
 		Region region,
 		String name,
@@ -113,6 +117,7 @@ public class Place {
 		Place place = new Place();
 		place.contentId = contentId;
 		place.contentTypeId = contentTypeId;
+		place.source = source;
 		place.cat1 = category;
 		place.region = region;
 		place.name = name;

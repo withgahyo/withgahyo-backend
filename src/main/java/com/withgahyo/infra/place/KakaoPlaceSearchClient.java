@@ -61,11 +61,13 @@ class KakaoPlaceSearchClient implements ProviderPlaceSearchClient {
 
 	private ExternalPlaceSearchResult toResult(Map<String, Object> document) {
 		String address = firstText(string(document.get("road_address_name")), string(document.get("address_name")));
+		String categoryGroupCode = string(document.get("category_group_code"));
 		return new ExternalPlaceSearchResult(
 			SOURCE,
+			categoryGroupCode,
 			string(document.get("id")),
 			string(document.get("place_name")),
-			mapCategory(string(document.get("category_group_code"))),
+			mapCategory(categoryGroupCode),
 			address,
 			KakaoRegionCodeMapper.areaCodeFromAddress(address),
 			"0",

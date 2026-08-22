@@ -103,7 +103,7 @@ erDiagram
 
 ### 장소/접근성
 
-- `place`는 외부 관광 API 식별자인 `(content_id, content_type_id)` 조합이 unique입니다.
+- `place`는 외부 관광 API 식별자인 `(content_id, content_type_id)` 조합이 unique입니다. `content_type_id`는 각 외부 API가 부여한 실제 분류 코드(관광공사 `contenttypeid`, 카카오 `category_group_code`)를 저장하며, 데이터 출처 구분(`TOUR_API`/`KAKAO`)은 별도의 `source` 컬럼에 저장합니다.
 - `region_id`는 필수 FK입니다.
 - `place_accessibility`는 `(place_id, facility_id)` 복합키를 사용하고 `status`, `source`, `verified_at`, `updated_at`을 가집니다.
 

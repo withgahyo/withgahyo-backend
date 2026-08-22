@@ -71,11 +71,13 @@ class TourApiPlaceSearchClient implements ProviderPlaceSearchClient {
 	}
 
 	private ExternalPlaceSearchResult toResult(Map<String, Object> item) {
+		String contentTypeId = string(item.get("contenttypeid"));
 		return new ExternalPlaceSearchResult(
 			SOURCE,
+			contentTypeId,
 			string(item.get("contentid")),
 			string(item.get("title")),
-			mapCategory(string(item.get("contenttypeid")), string(item.get("cat1"))),
+			mapCategory(contentTypeId, string(item.get("cat1"))),
 			firstText(string(item.get("addr1")), string(item.get("addr2"))),
 			string(item.get("areacode")),
 			string(item.get("sigungucode")),
