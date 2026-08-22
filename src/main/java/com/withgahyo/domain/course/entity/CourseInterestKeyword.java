@@ -33,4 +33,12 @@ public class CourseInterestKeyword {
 
 	@Column(name = "is_active", nullable = false)
 	private boolean active = true;
+
+	public static CourseInterestKeyword create(String code, String name) {
+		CourseInterestKeyword keyword = new CourseInterestKeyword();
+		keyword.code = code;
+		keyword.name = name;
+		keyword.active = true;
+		return keyword;
+	}
 }
