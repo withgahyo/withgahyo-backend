@@ -35,7 +35,8 @@ class PlaceSearchServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		placeSearchService = new PlaceSearchService(regionRepository, placeRepository, externalPlaceSearchClient);
+		PlaceUpsertWriter placeUpsertWriter = new PlaceUpsertWriter(regionRepository, placeRepository);
+		placeSearchService = new PlaceSearchService(regionRepository, externalPlaceSearchClient, placeUpsertWriter);
 	}
 
 	@Test
@@ -57,6 +58,7 @@ class PlaceSearchServiceTest {
 		Region region = Region.create("3", "1", "대전광역시 동구");
 		ExternalPlaceSearchResult externalPlace = new ExternalPlaceSearchResult(
 			"TOUR_API",
+			"12",
 			"126508",
 			"한밭수목원",
 			"NATURE",
@@ -71,7 +73,7 @@ class PlaceSearchServiceTest {
 
 		given(regionRepository.findByAreaCodeAndSigunguCode("3", "1")).willReturn(Optional.of(region));
 		given(externalPlaceSearchClient.search("3", "1", "수목원", null, 10)).willReturn(externalPage);
-		given(placeRepository.findByContentIdAndContentTypeId("126508", "TOUR_API")).willReturn(Optional.empty());
+		given(placeRepository.findByContentIdAndContentTypeId("126508", "12")).willReturn(Optional.empty());
 		given(placeRepository.save(org.mockito.ArgumentMatchers.any(Place.class)))
 			.willAnswer(invocation -> invocation.getArgument(0));
 
@@ -91,6 +93,7 @@ class PlaceSearchServiceTest {
 		Region region = Region.create("3", "0", "대전");
 		ExternalPlaceSearchResult externalPlace = new ExternalPlaceSearchResult(
 			"KAKAO",
+			"AT4",
 			"seoul-place",
 			"서울숲",
 			"NATURE",
