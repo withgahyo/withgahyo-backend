@@ -37,6 +37,9 @@ public class User {
 	@Column(name = "provider_user_id", nullable = false, length = 100)
 	private String providerUserId;
 
+	@Column(name = "email", length = 255)
+	private String email;
+
 	@Column(name = "nickname", nullable = false, length = 50)
 	private String nickname;
 
@@ -53,16 +56,28 @@ public class User {
 	private LocalDateTime deletedAt;
 
 	public static User create(String provider, String providerUserId, String nickname, String profileImageUrl) {
+		return create(provider, providerUserId, null, nickname, profileImageUrl);
+	}
+
+	public static User create(
+		String provider,
+		String providerUserId,
+		String email,
+		String nickname,
+		String profileImageUrl
+	) {
 		User user = new User();
 		user.provider = provider;
 		user.providerUserId = providerUserId;
+		user.email = email;
 		user.nickname = nickname;
 		user.profileImageUrl = profileImageUrl;
 		return user;
 	}
 
-	public void restoreOrUpdate(String nickname, String profileImageUrl) {
+	public void restoreOrUpdate(String email, String nickname, String profileImageUrl) {
 		this.deletedAt = null;
+		this.email = email;
 		this.nickname = nickname;
 		this.profileImageUrl = profileImageUrl;
 	}
