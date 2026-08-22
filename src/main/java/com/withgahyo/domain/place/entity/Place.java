@@ -98,4 +98,46 @@ public class Place {
 	void preUpdate() {
 		this.updatedAt = LocalDateTime.now();
 	}
+
+	public static Place create(
+		String contentId,
+		String contentTypeId,
+		String category,
+		Region region,
+		String name,
+		String address,
+		BigDecimal latitude,
+		BigDecimal longitude,
+		String imageUrl
+	) {
+		Place place = new Place();
+		place.contentId = contentId;
+		place.contentTypeId = contentTypeId;
+		place.cat1 = category;
+		place.region = region;
+		place.name = name;
+		place.address = address;
+		place.latitude = latitude;
+		place.longitude = longitude;
+		place.imageUrl = imageUrl;
+		return place;
+	}
+
+	public void updateExternalInfo(
+		String category,
+		Region region,
+		String name,
+		String address,
+		BigDecimal latitude,
+		BigDecimal longitude,
+		String imageUrl
+	) {
+		this.cat1 = category;
+		this.region = region;
+		this.name = name;
+		this.address = address;
+		this.latitude = latitude;
+		this.longitude = longitude;
+		this.imageUrl = imageUrl;
+	}
 }
