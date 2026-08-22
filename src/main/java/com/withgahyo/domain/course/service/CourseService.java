@@ -22,9 +22,11 @@ import com.withgahyo.domain.place.repository.RegionRepository;
 import com.withgahyo.domain.user.entity.User;
 import com.withgahyo.domain.user.repository.UserRepository;
 import com.withgahyo.global.exception.BusinessException;
+import com.withgahyo.global.exception.code.ErrorCode;
 import com.withgahyo.global.exception.code.SecurityErrorCode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Function;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -105,49 +107,49 @@ public class CourseService {
 	}
 
 	private List<FamilyRelation> findAndValidateFamilyRelations(Long userId, List<Long> familyMemberIds) {
-		if (familyMemberIds.isEmpty()) {
-			return List.of();
-		}
-		List<FamilyRelation> relations = familyRelationRepository.findActiveRelationsByUserIdAndFamilyUserIds(
-			userId,
-			familyMemberIds
+		return findAndValidate(
+			familyMemberIds,
+			ids -> familyRelationRepository.findActiveRelationsByUserIdAndFamilyUserIds(userId, ids),
+			CourseErrorCode.FAMILY_MEMBER_NOT_CONNECTED
 		);
-		if (relations.size() != familyMemberIds.stream().distinct().count()) {
-			throw new BusinessException(CourseErrorCode.FAMILY_MEMBER_NOT_CONNECTED);
-		}
-		return relations;
 	}
 
 	private List<CourseInterestKeyword> findAndValidateKeywords(List<Long> keywordIds) {
-		if (keywordIds.isEmpty()) {
-			return List.of();
-		}
-		List<CourseInterestKeyword> keywords = courseInterestKeywordRepository.findAllByKeywordIdInAndActiveIsTrue(
-			keywordIds
+		return findAndValidate(
+			keywordIds,
+			courseInterestKeywordRepository::findAllByKeywordIdInAndActiveIsTrue,
+			CourseErrorCode.KEYWORD_NOT_FOUND
 		);
-		if (keywords.size() != keywordIds.stream().distinct().count()) {
-			throw new BusinessException(CourseErrorCode.KEYWORD_NOT_FOUND);
-		}
-		return keywords;
 	}
 
 	private List<Place> findAndValidatePlaces(Region region, List<Long> placeIds) {
-		if (placeIds.isEmpty()) {
-			return List.of();
-		}
-		List<Place> places = placeRepository.findAllByPlaceIdIn(placeIds);
-		if (places.size() != placeIds.stream().distinct().count()) {
-			throw new BusinessException(CourseErrorCode.PLACE_NOT_FOUND);
-		}
-
-		places.forEach(place -> validatePlaceRegion(region, place));
-		return places;
+		List<Place> places = findAndValidate(
+			placeIds,
+			placeRepository::findAllByPlaceIdIn,
+			CourseErrorCode.PLACE_NOT_FOUND
+		);
+		return places.stream()
+			.filter(place -> isInRegion(region, place))
+			.toList();
 	}
 
-	private void validatePlaceRegion(Region region, Place place) {
-		if (!region.getAreaCode().equals(place.getRegion().getAreaCode())
-			|| !region.getSigunguCode().equals(place.getRegion().getSigunguCode())) {
-			throw new BusinessException(CourseErrorCode.PLACE_OUT_OF_SELECTED_REGION);
+	private <T> List<T> findAndValidate(
+		List<Long> ids,
+		Function<List<Long>, List<T>> finder,
+		ErrorCode notFoundErrorCode
+	) {
+		if (ids.isEmpty()) {
+			return List.of();
 		}
+		List<T> found = finder.apply(ids);
+		if (found.size() != ids.stream().distinct().count()) {
+			throw new BusinessException(notFoundErrorCode);
+		}
+		return found;
+	}
+
+	private boolean isInRegion(Region region, Place place) {
+		return region.getAreaCode().equals(place.getRegion().getAreaCode())
+			&& region.getSigunguCode().equals(place.getRegion().getSigunguCode());
 	}
 }

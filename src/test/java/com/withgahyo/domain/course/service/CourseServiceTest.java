@@ -92,6 +92,7 @@ class CourseServiceTest {
 		CourseInterestKeyword keyword = CourseInterestKeyword.create("NATURE", "자연");
 		Place place = Place.create(
 			"126508",
+			"12",
 			"TOUR_API",
 			"NATURE",
 			region,
@@ -185,12 +186,13 @@ class CourseServiceTest {
 	}
 
 	@Test
-	void createDraftCourse_fail_whenMustVisitPlaceIsOutsideSelectedRegion() {
+	void createDraftCourse_excludesMustVisitPlaceOutsideSelectedRegion() {
 		User creator = User.create("KAKAO", "creator", "작성자", null);
 		Region courseRegion = Region.create("3", "1", "대전광역시 동구");
 		Region otherRegion = Region.create("1", "1", "서울특별시 종로구");
 		Place place = Place.create(
 			"126508",
+			"12",
 			"TOUR_API",
 			"NATURE",
 			otherRegion,
@@ -204,6 +206,8 @@ class CourseServiceTest {
 		given(userRepository.findById(1L)).willReturn(Optional.of(creator));
 		given(regionRepository.findByAreaCodeAndSigunguCode("3", "1")).willReturn(Optional.of(courseRegion));
 		given(placeRepository.findAllByPlaceIdIn(List.of(501L))).willReturn(List.of(place));
+		given(courseRepository.save(org.mockito.ArgumentMatchers.any(Course.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
 
 		CreateCourseRequest request = new CreateCourseRequest(
 			"대전 효도 여행",
@@ -217,9 +221,8 @@ class CourseServiceTest {
 			TransportMode.CAR
 		);
 
-		assertThatThrownBy(() -> courseService.createDraftCourse(1L, request))
-			.isInstanceOf(BusinessException.class)
-			.extracting("errorCode")
-			.isEqualTo(CourseErrorCode.PLACE_OUT_OF_SELECTED_REGION);
+		courseService.createDraftCourse(1L, request);
+
+		verify(courseMustVisitPlaceRepository).saveAll(List.of());
 	}
 }

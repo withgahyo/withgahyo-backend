@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 
 public enum CourseErrorCode implements ErrorCode {
 	INVALID_TRAVEL_PERIOD(HttpStatus.BAD_REQUEST, "COURSE_400_001", "여행 시작일은 오늘 이상이고 종료일은 시작일 이후여야 합니다."),
-	PLACE_OUT_OF_SELECTED_REGION(HttpStatus.BAD_REQUEST, "COURSE_400_002", "선택한 지역에 속한 장소만 추가할 수 있습니다."),
 	REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "COURSE_404_001", "지역을 찾을 수 없습니다."),
 	KEYWORD_NOT_FOUND(HttpStatus.NOT_FOUND, "COURSE_404_002", "관심 키워드를 찾을 수 없습니다."),
 	PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "COURSE_404_003", "장소를 찾을 수 없습니다."),
