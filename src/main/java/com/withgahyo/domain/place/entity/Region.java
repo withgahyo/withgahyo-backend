@@ -36,4 +36,12 @@ public class Region {
 
 	@Column(name = "name", nullable = false, length = 100)
 	private String name;
+
+	public static Region create(String areaCode, String sigunguCode, String name) {
+		Region region = new Region();
+		region.areaCode = areaCode;
+		region.sigunguCode = sigunguCode;
+		region.name = name;
+		return region;
+	}
 }

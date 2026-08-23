@@ -35,3 +35,12 @@ auth:
       client-secret: ${GOOGLE_CLIENT_SECRET}
       token-uri: ${GOOGLE_TOKEN_URI:https://oauth2.googleapis.com/token}
       user-info-uri: ${GOOGLE_USER_INFO_URI:https://www.googleapis.com/oauth2/v3/userinfo}
+
+external:
+  tour-api:
+    base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr/B551011/KorService2}
+    service-key: ${TOUR_API_SERVICE_KEY:}
+    mobile-app: ${TOUR_API_MOBILE_APP:withgahyo}
+  kakao:
+    local-api-base-url: ${KAKAO_LOCAL_API_BASE_URL:https://dapi.kakao.com}
+    rest-api-key: ${KAKAO_REST_API_KEY:${KAKAO_CLIENT_ID:}}

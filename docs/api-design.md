@@ -208,6 +208,80 @@ OAuth 앱 키와 시크릿은 백엔드 환경변수로 관리합니다.
 | API-CRS-004 | `GET` | `/api/v1/users/me/family-members` | 필요 | 코스 생성용 가족 선택지 조회 |
 | API-CRS-005 | `POST` | `/api/v1/courses` | 필요 | 코스 초안 생성 |
 
+#### CRS 지역·장소 검색 정책
+
+`GET /api/v1/regions/search`
+
+여행 지역 선택용 API입니다. 지역은 전국을 대상으로 하며, 관광공사 지역 코드 체계인 `areaCode`, `sigunguCode`를 기준으로 반환합니다.
+
+Query Parameters:
+
+| 이름 | 필수 | 설명 |
+| --- | --- | --- |
+| `query` | 아니오 | 지역명 검색어입니다. 없으면 전체 지역을 반환할 수 있습니다. |
+
+Response:
+
+```json
+{
+  "regions": [
+    {
+      "areaCode": "3",
+      "sigunguCode": "1",
+      "name": "대전광역시 동구",
+      "parentName": "대전광역시",
+      "displayName": "대전 동구"
+    }
+  ]
+}
+```
+
+`GET /api/v1/places/search`
+
+꼭 가고 싶은 장소 검색용 API입니다. 사용자가 먼저 선택한 여행 지역 안에서만 장소를 검색할 수 있습니다.
+
+Query Parameters:
+
+| 이름 | 필수 | 설명 |
+| --- | --- | --- |
+| `areaCode` | 예 | 선택한 여행 지역의 관광공사 시도 코드입니다. |
+| `sigunguCode` | 아니오 | 선택한 여행 지역의 관광공사 시군구 코드입니다. 시군구까지 선택한 경우 전달합니다. |
+| `query` | 예 | 장소 검색어입니다. |
+| `cursor` | 아니오 | 다음 검색 결과를 이어서 조회할 때 사용하는 커서입니다. 첫 요청에서는 전달하지 않습니다. |
+| `size` | 아니오 | 한 번에 조회할 장소 수입니다. 기본값은 구현 시 정합니다. |
+
+장소 검색은 한국관광공사 `한국관광공사_국문 관광정보 서비스_GW`의 `searchKeyword2`와 카카오 Local API의 `키워드로 장소 검색`을 함께 활용합니다. 지역 코드는 한국관광공사 `areaCode2` 기준을 사용합니다. 카카오 Local API 결과는 주소·좌표 보강과 관광공사 검색 결과 보완에 사용하며, 필요하면 `주소로 좌표 변환`, `좌표로 행정구역정보 받기` API로 지역 일치 여부를 확인합니다. 백엔드는 외부 API 응답을 그대로 노출하지 않고 서비스의 `place` 리소스 형태로 정규화합니다. 검색 결과는 요청한 `areaCode`와 `sigunguCode` 범위에 속한 장소만 반환합니다.
+
+Response:
+
+```json
+{
+  "places": [
+    {
+      "placeId": 501,
+      "source": "TOUR_API",
+      "externalPlaceId": "126508",
+      "name": "한밭수목원",
+      "category": "NATURE",
+      "address": "대전광역시 서구 둔산대로 169",
+      "areaCode": "3",
+      "sigunguCode": "1",
+      "imageUrl": "https://example.com/place.jpg",
+      "latitude": 36.366,
+      "longitude": 127.388
+    }
+  ],
+  "hasNext": false,
+  "nextCursor": null
+}
+```
+
+`source`는 장소 데이터의 기준 출처이며 `TOUR_API`, `KAKAO` 등을 사용할 수 있습니다. `externalPlaceId`는 외부 API의 장소 식별자입니다.
+
+`hasNext`가 `true`이면 다음 검색 결과가 남아 있다는 뜻입니다. 이때 `nextCursor` 값을 다음 요청의 `cursor`로 전달해 이어서 조회합니다. 마지막 결과이면 `hasNext`는 `false`, `nextCursor`는 `null`입니다.
+
+`POST /api/v1/courses`에서 `mustVisitPlaceIds`를 저장할 때는 코스의 `areaCode`, `sigunguCode`와 각 장소의 지역이 일치하는지 다시 검증합니다. 지역이 다른 장소는 코스의 꼭 가고 싶은 장소로 저장하지 않습니다.
+
 ### REC
 
 | API ID | Method | Path | 인증 | 설명 |

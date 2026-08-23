@@ -58,4 +58,14 @@ public class CourseParticipant {
 	void prePersist() {
 		this.createdAt = LocalDateTime.now();
 	}
+
+	public static CourseParticipant create(Course course, User user, String relationshipSnapshot) {
+		CourseParticipant participant = new CourseParticipant();
+		participant.course = course;
+		participant.user = user;
+		participant.nameSnapshot = user.getNickname();
+		participant.relationshipSnapshot = relationshipSnapshot;
+		participant.profileImageUrlSnapshot = user.getProfileImageUrl();
+		return participant;
+	}
 }
