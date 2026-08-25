@@ -41,8 +41,8 @@ class FamilyServiceTest {
 
 	@Test
 	void findCandidate_success_whenUserExistsAndNotConnected() {
-		User requester = userWithId(User.create("KAKAO", "me", "나", null, "me@example.com"), 1L);
-		User candidate = userWithId(User.create("KAKAO", "mom", "엄마", "https://example.com/mom.png", "mom@example.com"), 2L);
+		User requester = userWithId(User.create("KAKAO", "me", "me@example.com", "나", null), 1L);
+		User candidate = userWithId(User.create("KAKAO", "mom", "mom@example.com", "엄마", "https://example.com/mom.png"), 2L);
 
 		given(userRepository.findById(1L)).willReturn(Optional.of(requester));
 		given(userRepository.findActiveUsersByEmail("mom@example.com")).willReturn(List.of(candidate));
@@ -59,8 +59,8 @@ class FamilyServiceTest {
 
 	@Test
 	void findCandidate_success_whenAlreadyConnected() {
-		User requester = userWithId(User.create("KAKAO", "me", "나", null, "me@example.com"), 1L);
-		User candidate = userWithId(User.create("KAKAO", "dad", "아빠", null, "dad@example.com"), 2L);
+		User requester = userWithId(User.create("KAKAO", "me", "me@example.com", "나", null), 1L);
+		User candidate = userWithId(User.create("KAKAO", "dad", "dad@example.com", "아빠", null), 2L);
 
 		given(userRepository.findById(1L)).willReturn(Optional.of(requester));
 		given(userRepository.findActiveUsersByEmail("dad@example.com")).willReturn(List.of(candidate));
@@ -73,7 +73,7 @@ class FamilyServiceTest {
 
 	@Test
 	void findCandidate_fail_whenSelfEmail() {
-		User requester = userWithId(User.create("KAKAO", "me", "나", null, "me@example.com"), 1L);
+		User requester = userWithId(User.create("KAKAO", "me", "me@example.com", "나", null), 1L);
 
 		given(userRepository.findById(1L)).willReturn(Optional.of(requester));
 		given(userRepository.findActiveUsersByEmail("me@example.com")).willReturn(List.of(requester));
@@ -97,9 +97,9 @@ class FamilyServiceTest {
 
 	@Test
 	void findCandidate_fail_whenEmailMatchesMultipleUsers() {
-		User requester = userWithId(User.create("KAKAO", "me", "나", null, "me@example.com"), 1L);
-		User kakaoUser = userWithId(User.create("KAKAO", "target", "가족", null, "target@example.com"), 2L);
-		User googleUser = userWithId(User.create("GOOGLE", "target", "가족", null, "target@example.com"), 3L);
+		User requester = userWithId(User.create("KAKAO", "me", "me@example.com", "나", null), 1L);
+		User kakaoUser = userWithId(User.create("KAKAO", "target", "target@example.com", "가족", null), 2L);
+		User googleUser = userWithId(User.create("GOOGLE", "target", "target@example.com", "가족", null), 3L);
 
 		given(userRepository.findById(1L)).willReturn(Optional.of(requester));
 		given(userRepository.findActiveUsersByEmail("target@example.com")).willReturn(List.of(kakaoUser, googleUser));

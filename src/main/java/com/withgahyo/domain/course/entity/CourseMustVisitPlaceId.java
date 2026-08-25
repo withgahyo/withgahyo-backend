@@ -18,4 +18,9 @@ public class CourseMustVisitPlaceId implements Serializable {
 
 	@Column(name = "place_id")
 	private Long placeId;
+
+	public CourseMustVisitPlaceId(Long courseId, Long placeId) {
+		this.courseId = courseId;
+		this.placeId = placeId;
+	}
 }

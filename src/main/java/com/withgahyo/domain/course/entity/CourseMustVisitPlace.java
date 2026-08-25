@@ -30,4 +30,12 @@ public class CourseMustVisitPlace {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "place_id", nullable = false)
 	private Place place;
+
+	public static CourseMustVisitPlace create(Course course, Place place) {
+		CourseMustVisitPlace mustVisitPlace = new CourseMustVisitPlace();
+		mustVisitPlace.id = new CourseMustVisitPlaceId(course.getCourseId(), place.getPlaceId());
+		mustVisitPlace.course = course;
+		mustVisitPlace.place = place;
+		return mustVisitPlace;
+	}
 }

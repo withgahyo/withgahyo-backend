@@ -37,14 +37,14 @@ public class User {
 	@Column(name = "provider_user_id", nullable = false, length = 100)
 	private String providerUserId;
 
+	@Column(name = "email", length = 255)
+	private String email;
+
 	@Column(name = "nickname", nullable = false, length = 50)
 	private String nickname;
 
 	@Column(name = "profile_image_url", length = 500)
 	private String profileImageUrl;
-
-	@Column(name = "email", length = 255)
-	private String email;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
@@ -56,28 +56,30 @@ public class User {
 	private LocalDateTime deletedAt;
 
 	public static User create(String provider, String providerUserId, String nickname, String profileImageUrl) {
-		return create(provider, providerUserId, nickname, profileImageUrl, null);
+		return create(provider, providerUserId, null, nickname, profileImageUrl);
 	}
 
-	public static User create(String provider, String providerUserId, String nickname, String profileImageUrl, String email) {
+	public static User create(
+		String provider,
+		String providerUserId,
+		String email,
+		String nickname,
+		String profileImageUrl
+	) {
 		User user = new User();
 		user.provider = provider;
 		user.providerUserId = providerUserId;
+		user.email = email;
 		user.nickname = nickname;
 		user.profileImageUrl = profileImageUrl;
-		user.email = email;
 		return user;
 	}
 
-	public void restoreOrUpdate(String nickname, String profileImageUrl) {
-		restoreOrUpdate(nickname, profileImageUrl, this.email);
-	}
-
-	public void restoreOrUpdate(String nickname, String profileImageUrl, String email) {
+	public void restoreOrUpdate(String email, String nickname, String profileImageUrl) {
 		this.deletedAt = null;
+		this.email = email;
 		this.nickname = nickname;
 		this.profileImageUrl = profileImageUrl;
-		this.email = email;
 	}
 
 	public void withdraw(LocalDateTime withdrawnAt) {

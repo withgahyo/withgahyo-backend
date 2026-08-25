@@ -41,6 +41,9 @@ public class Place {
 	@Column(name = "content_type_id", nullable = false, length = 20)
 	private String contentTypeId;
 
+	@Column(name = "source", nullable = false, length = 20)
+	private String source;
+
 	@Column(name = "cat1", length = 20)
 	private String cat1;
 
@@ -97,5 +100,49 @@ public class Place {
 	@PreUpdate
 	void preUpdate() {
 		this.updatedAt = LocalDateTime.now();
+	}
+
+	public static Place create(
+		String contentId,
+		String contentTypeId,
+		String source,
+		String category,
+		Region region,
+		String name,
+		String address,
+		BigDecimal latitude,
+		BigDecimal longitude,
+		String imageUrl
+	) {
+		Place place = new Place();
+		place.contentId = contentId;
+		place.contentTypeId = contentTypeId;
+		place.source = source;
+		place.cat1 = category;
+		place.region = region;
+		place.name = name;
+		place.address = address;
+		place.latitude = latitude;
+		place.longitude = longitude;
+		place.imageUrl = imageUrl;
+		return place;
+	}
+
+	public void updateExternalInfo(
+		String category,
+		Region region,
+		String name,
+		String address,
+		BigDecimal latitude,
+		BigDecimal longitude,
+		String imageUrl
+	) {
+		this.cat1 = category;
+		this.region = region;
+		this.name = name;
+		this.address = address;
+		this.latitude = latitude;
+		this.longitude = longitude;
+		this.imageUrl = imageUrl;
 	}
 }

@@ -72,6 +72,17 @@ public class Course {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
+	public static Course create(User creatorUser, Region region, String title, LocalDate startDate, LocalDate endDate) {
+		Course course = new Course();
+		course.creatorUser = creatorUser;
+		course.region = region;
+		course.title = title;
+		course.startDate = startDate;
+		course.endDate = endDate;
+		course.status = CourseStatus.DRAFT;
+		return course;
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();

@@ -143,7 +143,7 @@ public class AuthService {
 		return userRepository.findByProviderAndProviderUserId(provider, userInfo.providerUserId())
 			.map(user -> {
 				// 같은 소셜 계정으로 재가입하면 새 row를 만들지 않고 기존 탈퇴 계정을 복구한다.
-				user.restoreOrUpdate(userInfo.nickname(), userInfo.profileImageUrl(), userInfo.email());
+				user.restoreOrUpdate(userInfo.email(), userInfo.nickname(), userInfo.profileImageUrl());
 				return new UserLookupResult(user, false);
 			})
 			.orElseGet(() -> createUser(provider, userInfo));
@@ -153,9 +153,9 @@ public class AuthService {
 		User user = User.create(
 			provider,
 			userInfo.providerUserId(),
+			userInfo.email(),
 			userInfo.nickname(),
-			userInfo.profileImageUrl(),
-			userInfo.email()
+			userInfo.profileImageUrl()
 		);
 		try {
 			User savedUser = userRepository.save(user);
@@ -168,7 +168,7 @@ public class AuthService {
 			// unique 제약 위반으로 이 요청은 실패하므로, 방금 생성된 유저를 다시 조회해 정상 로그인으로 처리한다.
 			User existingUser = userRepository.findByProviderAndProviderUserId(provider, userInfo.providerUserId())
 				.orElseThrow(() -> exception);
-			existingUser.restoreOrUpdate(userInfo.nickname(), userInfo.profileImageUrl(), userInfo.email());
+			existingUser.restoreOrUpdate(userInfo.email(), userInfo.nickname(), userInfo.profileImageUrl());
 			return new UserLookupResult(existingUser, false);
 		}
 	}

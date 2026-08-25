@@ -67,7 +67,7 @@ class OAuthUserClientTest {
 	void 구글_인가_코드로_토큰을_발급받고_사용자_정보를_조회한다() throws IOException {
 		String baseUrl = startServer(
 			"{\"access_token\":\"google-provider-access-token\"}",
-			"{\"sub\":\"google-123\",\"name\":\"구글닉네임\",\"picture\":\"https://example.com/google.png\",\"email\":\"google@example.com\"}"
+			"{\"sub\":\"google-123\",\"email\":\"google@example.com\",\"name\":\"구글닉네임\",\"picture\":\"https://example.com/google.png\"}"
 		);
 		GoogleOAuthUserClient client = new GoogleOAuthUserClient(
 			HttpClient.newHttpClient(),
@@ -85,9 +85,9 @@ class OAuthUserClientTest {
 
 		assertThat(userInfo.provider()).isEqualTo(OAuthProvider.GOOGLE);
 		assertThat(userInfo.providerUserId()).isEqualTo("google-123");
+		assertThat(userInfo.email()).isEqualTo("google@example.com");
 		assertThat(userInfo.nickname()).isEqualTo("구글닉네임");
 		assertThat(userInfo.profileImageUrl()).isEqualTo("https://example.com/google.png");
-		assertThat(userInfo.email()).isEqualTo("google@example.com");
 		assertThat(recordedRequests.get(0).method()).isEqualTo("POST");
 		assertThat(recordedRequests.get(0).body()).contains(
 			"grant_type=authorization_code",

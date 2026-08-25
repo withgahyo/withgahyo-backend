@@ -67,16 +67,16 @@ class AuthServiceTest {
 		OAuthUserInfo oauthUserInfo = new OAuthUserInfo(
 			OAuthProvider.KAKAO,
 			"kakao-1",
+			"family@example.com",
 			"같이가효",
-			"https://example.com/profile.png",
-			"family@example.com"
+			"https://example.com/profile.png"
 		);
 		User savedUser = userWithId(User.create(
 			"KAKAO",
 			"kakao-1",
+			"family@example.com",
 			"같이가효",
-			"https://example.com/profile.png",
-			"family@example.com"
+			"https://example.com/profile.png"
 		), 1L);
 
 		given(kakaoOAuthUserClient.getUserInfo("authorization-code", "http://localhost:5173/oauth/kakao/callback"))
@@ -113,16 +113,16 @@ class AuthServiceTest {
 		OAuthUserInfo oauthUserInfo = new OAuthUserInfo(
 			OAuthProvider.KAKAO,
 			"kakao-1",
+			"latest@example.com",
 			"최신닉네임",
-			"https://example.com/latest.png",
-			"latest@example.com"
+			"https://example.com/latest.png"
 		);
 		User deletedUser = userWithId(User.create(
 			"KAKAO",
 			"kakao-1",
+			"old@example.com",
 			"이전닉네임",
-			"https://example.com/old.png",
-			"old@example.com"
+			"https://example.com/old.png"
 		), 1L);
 		deletedUser.withdraw(LocalDateTime.of(2026, 8, 19, 10, 0));
 
@@ -151,16 +151,16 @@ class AuthServiceTest {
 		OAuthUserInfo oauthUserInfo = new OAuthUserInfo(
 			OAuthProvider.GOOGLE,
 			"google-1",
+			"google@example.com",
 			"구글유저",
-			"https://example.com/google.png",
-			"google@example.com"
+			"https://example.com/google.png"
 		);
 		User existingUser = userWithId(User.create(
 			"GOOGLE",
 			"google-1",
+			"old-google@example.com",
 			"이전구글",
-			"https://example.com/old-google.png",
-			"old-google@example.com"
+			"https://example.com/old-google.png"
 		), 2L);
 
 		given(googleOAuthUserClient.getUserInfo("google-authorization-code", "http://localhost:5173/oauth/google/callback"))
@@ -179,9 +179,9 @@ class AuthServiceTest {
 		assertThat(response.refreshToken()).isEqualTo("google-refresh-token");
 		assertThat(response.isNewUser()).isFalse();
 		assertThat(response.user().userId()).isEqualTo(2L);
+		assertThat(response.user().email()).isEqualTo("google@example.com");
 		assertThat(response.user().nickname()).isEqualTo("구글유저");
 		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/google.png");
-		assertThat(response.user().email()).isEqualTo("google@example.com");
 		assertThat(existingUser.getEmail()).isEqualTo("google@example.com");
 	}
 

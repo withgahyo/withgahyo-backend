@@ -119,9 +119,9 @@ public class GoogleOAuthUserClient implements OAuthUserClient {
 			throw new BusinessException(SecurityErrorCode.INVALID_TOKEN);
 		}
 
+		String email = OAuthHttpSupport.textOrNull(root.path("email"));
 		String nickname = OAuthHttpSupport.textOrDefault(root.path("name"), "같이가효");
 		String profileImageUrl = OAuthHttpSupport.textOrNull(root.path("picture"));
-		String email = OAuthHttpSupport.textOrNull(root.path("email"));
-		return new OAuthUserInfo(OAuthProvider.GOOGLE, subjectNode.asText(), nickname, profileImageUrl, email);
+		return new OAuthUserInfo(OAuthProvider.GOOGLE, subjectNode.asText(), email, nickname, profileImageUrl);
 	}
 }

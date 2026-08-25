@@ -3,11 +3,17 @@ package com.withgahyo.domain.auth.oauth;
 public record OAuthUserInfo(
 	OAuthProvider provider,
 	String providerUserId,
+	String email,
 	String nickname,
-	String profileImageUrl,
-	String email
+	String profileImageUrl
 ) {
-	public OAuthUserInfo(OAuthProvider provider, String providerUserId, String nickname, String profileImageUrl) {
-		this(provider, providerUserId, nickname, profileImageUrl, null);
+
+	public OAuthUserInfo(
+		OAuthProvider provider,
+		String providerUserId,
+		String nickname,
+		String profileImageUrl
+	) {
+		this(provider, providerUserId, null, nickname, profileImageUrl);
 	}
 }
