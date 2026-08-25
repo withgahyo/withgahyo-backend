@@ -188,8 +188,13 @@ OAuth 앱 키와 시크릿은 백엔드 환경변수로 관리합니다.
 | API ID | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- | --- |
 | API-FAM-001 | `GET` | `/api/v1/family/members` | 필요 | 가족 구성원 조회 |
-| API-FAM-002 | `POST` | `/api/v1/family/members` | 필요 | 가족 구성원 연결 |
-| API-FAM-003 | `DELETE` | `/api/v1/family/members/{familyMemberId}` | 필요 | 가족 연결 해제 |
+| API-FAM-002 | `GET` | `/api/v1/family/members/candidates` | 필요 | 이메일 기반 가족 연결 후보 조회 |
+| API-FAM-003 | `POST` | `/api/v1/family/members` | 필요 | 가족 구성원 연결 |
+| API-FAM-004 | `DELETE` | `/api/v1/family/members/{familyMemberId}` | 필요 | 가족 연결 해제 |
+
+- 이메일 기반 후보 조회는 가입된 활성 회원만 반환하며, 이메일은 마스킹해서 응답합니다.
+- 이미 연결된 가족은 후보 조회에서 `alreadyConnected: true`로 응답하고, 실제 연결 생성 요청에서는 `409 Conflict`로 처리합니다.
+- 같은 이메일에 활성 계정이 여러 개 연결된 경우 후보를 특정할 수 없으므로 `409 Conflict`로 처리합니다.
 
 ### HOME
 
