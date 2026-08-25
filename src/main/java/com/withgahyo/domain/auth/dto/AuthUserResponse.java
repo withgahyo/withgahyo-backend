@@ -6,6 +6,7 @@ public record AuthUserResponse(
 	Long userId,
 	String nickname,
 	String profileImageUrl,
+	String email,
 	boolean onboardingCompleted
 ) {
 
@@ -14,6 +15,7 @@ public record AuthUserResponse(
 			user.getUserId(),
 			user.getNickname(),
 			user.getProfileImageUrl(),
+			user.getEmail(),
 			onboardingCompleted
 		);
 	}

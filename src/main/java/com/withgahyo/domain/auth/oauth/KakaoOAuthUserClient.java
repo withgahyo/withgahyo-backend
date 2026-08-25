@@ -124,7 +124,8 @@ public class KakaoOAuthUserClient implements OAuthUserClient {
 		JsonNode properties = root.path("properties");
 		String nickname = OAuthHttpSupport.textOrDefault(properties.path("nickname"), "같이가효");
 		String profileImageUrl = OAuthHttpSupport.textOrNull(properties.path("profile_image"));
+		String email = OAuthHttpSupport.textOrNull(root.path("kakao_account").path("email"));
 
-		return new OAuthUserInfo(OAuthProvider.KAKAO, idNode.asText(), nickname, profileImageUrl);
+		return new OAuthUserInfo(OAuthProvider.KAKAO, idNode.asText(), nickname, profileImageUrl, email);
 	}
 }

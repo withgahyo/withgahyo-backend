@@ -121,6 +121,7 @@ public class GoogleOAuthUserClient implements OAuthUserClient {
 
 		String nickname = OAuthHttpSupport.textOrDefault(root.path("name"), "같이가효");
 		String profileImageUrl = OAuthHttpSupport.textOrNull(root.path("picture"));
-		return new OAuthUserInfo(OAuthProvider.GOOGLE, subjectNode.asText(), nickname, profileImageUrl);
+		String email = OAuthHttpSupport.textOrNull(root.path("email"));
+		return new OAuthUserInfo(OAuthProvider.GOOGLE, subjectNode.asText(), nickname, profileImageUrl, email);
 	}
 }

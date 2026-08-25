@@ -31,7 +31,7 @@ class OAuthUserClientTest {
 	void 카카오_인가_코드로_토큰을_발급받고_사용자_정보를_조회한다() throws IOException {
 		String baseUrl = startServer(
 			"{\"access_token\":\"kakao-provider-access-token\"}",
-			"{\"id\":12345,\"properties\":{\"nickname\":\"카카오닉네임\",\"profile_image\":\"https://example.com/kakao.png\"}}"
+			"{\"id\":12345,\"properties\":{\"nickname\":\"카카오닉네임\",\"profile_image\":\"https://example.com/kakao.png\"},\"kakao_account\":{\"email\":\"kakao@example.com\"}}"
 		);
 		KakaoOAuthUserClient client = new KakaoOAuthUserClient(
 			HttpClient.newHttpClient(),
@@ -51,6 +51,7 @@ class OAuthUserClientTest {
 		assertThat(userInfo.providerUserId()).isEqualTo("12345");
 		assertThat(userInfo.nickname()).isEqualTo("카카오닉네임");
 		assertThat(userInfo.profileImageUrl()).isEqualTo("https://example.com/kakao.png");
+		assertThat(userInfo.email()).isEqualTo("kakao@example.com");
 		assertThat(recordedRequests.get(0).method()).isEqualTo("POST");
 		assertThat(recordedRequests.get(0).body()).contains(
 			"grant_type=authorization_code",
@@ -66,7 +67,7 @@ class OAuthUserClientTest {
 	void 구글_인가_코드로_토큰을_발급받고_사용자_정보를_조회한다() throws IOException {
 		String baseUrl = startServer(
 			"{\"access_token\":\"google-provider-access-token\"}",
-			"{\"sub\":\"google-123\",\"name\":\"구글닉네임\",\"picture\":\"https://example.com/google.png\"}"
+			"{\"sub\":\"google-123\",\"name\":\"구글닉네임\",\"picture\":\"https://example.com/google.png\",\"email\":\"google@example.com\"}"
 		);
 		GoogleOAuthUserClient client = new GoogleOAuthUserClient(
 			HttpClient.newHttpClient(),
@@ -86,6 +87,7 @@ class OAuthUserClientTest {
 		assertThat(userInfo.providerUserId()).isEqualTo("google-123");
 		assertThat(userInfo.nickname()).isEqualTo("구글닉네임");
 		assertThat(userInfo.profileImageUrl()).isEqualTo("https://example.com/google.png");
+		assertThat(userInfo.email()).isEqualTo("google@example.com");
 		assertThat(recordedRequests.get(0).method()).isEqualTo("POST");
 		assertThat(recordedRequests.get(0).body()).contains(
 			"grant_type=authorization_code",
