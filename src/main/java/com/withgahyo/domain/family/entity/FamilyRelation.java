@@ -63,4 +63,17 @@ public class FamilyRelation {
 		familyRelation.relationship = relationship;
 		return familyRelation;
 	}
+
+	public boolean isActive() {
+		return deletedAt == null;
+	}
+
+	public void restore(String relationship) {
+		this.relationship = relationship;
+		this.deletedAt = null;
+	}
+
+	public void disconnect() {
+		this.deletedAt = LocalDateTime.now();
+	}
 }

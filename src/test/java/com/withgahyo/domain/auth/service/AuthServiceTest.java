@@ -67,12 +67,14 @@ class AuthServiceTest {
 		OAuthUserInfo oauthUserInfo = new OAuthUserInfo(
 			OAuthProvider.KAKAO,
 			"kakao-1",
+			"family@example.com",
 			"같이가효",
 			"https://example.com/profile.png"
 		);
 		User savedUser = userWithId(User.create(
 			"KAKAO",
 			"kakao-1",
+			"family@example.com",
 			"같이가효",
 			"https://example.com/profile.png"
 		), 1L);
@@ -98,6 +100,7 @@ class AuthServiceTest {
 		assertThat(response.user().userId()).isEqualTo(1L);
 		assertThat(response.user().nickname()).isEqualTo("같이가효");
 		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/profile.png");
+		assertThat(response.user().email()).isEqualTo("family@example.com");
 		assertThat(response.user().onboardingCompleted()).isFalse();
 
 		ArgumentCaptor<RefreshToken> refreshTokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
@@ -110,12 +113,14 @@ class AuthServiceTest {
 		OAuthUserInfo oauthUserInfo = new OAuthUserInfo(
 			OAuthProvider.KAKAO,
 			"kakao-1",
+			"latest@example.com",
 			"최신닉네임",
 			"https://example.com/latest.png"
 		);
 		User deletedUser = userWithId(User.create(
 			"KAKAO",
 			"kakao-1",
+			"old@example.com",
 			"이전닉네임",
 			"https://example.com/old.png"
 		), 1L);
@@ -136,6 +141,8 @@ class AuthServiceTest {
 		assertThat(response.isNewUser()).isFalse();
 		assertThat(response.user().nickname()).isEqualTo("최신닉네임");
 		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/latest.png");
+		assertThat(response.user().email()).isEqualTo("latest@example.com");
+		assertThat(deletedUser.getEmail()).isEqualTo("latest@example.com");
 		assertThat(deletedUser.getDeletedAt()).isNull();
 	}
 
@@ -175,6 +182,7 @@ class AuthServiceTest {
 		assertThat(response.user().email()).isEqualTo("google@example.com");
 		assertThat(response.user().nickname()).isEqualTo("구글유저");
 		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/google.png");
+		assertThat(existingUser.getEmail()).isEqualTo("google@example.com");
 	}
 
 	@Test
