@@ -57,4 +57,12 @@ class FamilyControllerTest {
 		assertThat(response.data()).isEqualTo(candidate);
 		verify(familyService).findCandidate(1L, "mom@example.com");
 	}
+
+	@Test
+	void disconnect_deletesFamilyMember() {
+		var response = familyController.disconnect(new AuthenticatedUser(1L), 2L);
+
+		assertThat(response.data()).isNull();
+		verify(familyService).disconnect(1L, 2L);
+	}
 }

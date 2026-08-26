@@ -60,6 +60,15 @@ public class FamilyService {
 		return FamilyMemberResponse.from(relation);
 	}
 
+	@Transactional
+	public void disconnect(Long userId, Long familyMemberId) {
+		FamilyRelation relation = familyRelationRepository.findRelation(userId, familyMemberId)
+			.filter(FamilyRelation::isActive)
+			.orElseThrow(() -> new BusinessException(FamilyErrorCode.FAMILY_RELATION_NOT_FOUND));
+
+		relation.disconnect();
+	}
+
 	private User findActiveUser(Long userId) {
 		return userRepository.findById(userId)
 			.filter(user -> user.getDeletedAt() == null)

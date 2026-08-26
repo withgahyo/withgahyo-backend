@@ -11,7 +11,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -47,6 +49,15 @@ public class FamilyController {
 		@Valid @RequestBody ConnectFamilyMemberRequest request
 	) {
 		return ApiResponse.success(familyService.connect(requireUserId(authenticatedUser), request));
+	}
+
+	@DeleteMapping("/{familyMemberId}")
+	public ApiResponse<Void> disconnect(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long familyMemberId
+	) {
+		familyService.disconnect(requireUserId(authenticatedUser), familyMemberId);
+		return ApiResponse.ok();
 	}
 
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {

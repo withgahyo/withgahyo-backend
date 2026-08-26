@@ -15,6 +15,7 @@ public interface FamilyRelationRepository extends JpaRepository<FamilyRelation, 
 		join fetch fr.familyUser
 		where fr.user.userId = :userId
 			and fr.deletedAt is null
+			and fr.familyUser.deletedAt is null
 		order by fr.familyRelationId asc
 		""")
 	List<FamilyRelation> findActiveRelationsByUserId(@Param("userId") Long userId);
@@ -26,6 +27,7 @@ public interface FamilyRelationRepository extends JpaRepository<FamilyRelation, 
 		where fr.user.userId = :userId
 			and fr.familyUser.userId in :familyUserIds
 			and fr.deletedAt is null
+			and fr.familyUser.deletedAt is null
 		""")
 	List<FamilyRelation> findActiveRelationsByUserIdAndFamilyUserIds(
 		@Param("userId") Long userId,
@@ -38,6 +40,7 @@ public interface FamilyRelationRepository extends JpaRepository<FamilyRelation, 
 		where fr.user.userId = :userId
 			and fr.familyUser.userId = :familyUserId
 			and fr.deletedAt is null
+			and fr.familyUser.deletedAt is null
 		""")
 	boolean existsActiveRelation(
 		@Param("userId") Long userId,

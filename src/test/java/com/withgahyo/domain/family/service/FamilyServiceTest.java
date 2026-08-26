@@ -166,6 +166,30 @@ class FamilyServiceTest {
 			);
 	}
 
+	@Test
+	void disconnect_success_deletesActiveRelation() {
+		User requester = userWithId(User.create("KAKAO", "me", "나", null), 1L);
+		User familyUser = userWithId(User.create("KAKAO", "dad", "아빠", null), 2L);
+		FamilyRelation relation = FamilyRelation.create(requester, familyUser, "아빠");
+
+		given(familyRelationRepository.findRelation(1L, 2L)).willReturn(Optional.of(relation));
+
+		familyService.disconnect(1L, 2L);
+
+		assertThat(relation.isActive()).isFalse();
+		assertThat(relation.getDeletedAt()).isNotNull();
+	}
+
+	@Test
+	void disconnect_fail_whenRelationIsMissing() {
+		given(familyRelationRepository.findRelation(1L, 2L)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> familyService.disconnect(1L, 2L))
+			.isInstanceOfSatisfying(BusinessException.class, exception ->
+				assertThat(exception.getErrorCode()).isEqualTo(FamilyErrorCode.FAMILY_RELATION_NOT_FOUND)
+			);
+	}
+
 	private User userWithId(User user, Long userId) {
 		try {
 			Field field = User.class.getDeclaredField("userId");

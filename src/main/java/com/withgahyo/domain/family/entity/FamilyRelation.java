@@ -72,4 +72,8 @@ public class FamilyRelation {
 		this.relationship = relationship;
 		this.deletedAt = null;
 	}
+
+	public void disconnect() {
+		this.deletedAt = LocalDateTime.now();
+	}
 }
