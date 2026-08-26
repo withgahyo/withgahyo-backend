@@ -40,6 +40,23 @@ class FamilyServiceTest {
 	}
 
 	@Test
+	void getFamilyMembers_returnsActiveRelations() {
+		User user = userWithId(User.create("KAKAO", "me", "나", null), 1L);
+		User familyUser = userWithId(User.create("KAKAO", "dad", "아빠", "https://example.com/dad.png"), 2L);
+		FamilyRelation relation = FamilyRelation.create(user, familyUser, "아빠");
+
+		given(familyRelationRepository.findActiveRelationsByUserId(1L)).willReturn(List.of(relation));
+
+		var response = familyService.getFamilyMembers(1L);
+
+		assertThat(response.familyMembers()).hasSize(1);
+		assertThat(response.familyMembers().get(0).familyMemberId()).isEqualTo(2L);
+		assertThat(response.familyMembers().get(0).nickname()).isEqualTo("아빠");
+		assertThat(response.familyMembers().get(0).relationship()).isEqualTo("아빠");
+		assertThat(response.familyMembers().get(0).profileImageUrl()).isEqualTo("https://example.com/dad.png");
+	}
+
+	@Test
 	void findCandidate_success_whenUserExistsAndNotConnected() {
 		User requester = userWithId(User.create("KAKAO", "me", "me@example.com", "나", null), 1L);
 		User candidate = userWithId(User.create("KAKAO", "mom", "mom@example.com", "엄마", "https://example.com/mom.png"), 2L);

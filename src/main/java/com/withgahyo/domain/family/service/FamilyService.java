@@ -3,6 +3,7 @@ package com.withgahyo.domain.family.service;
 import com.withgahyo.domain.family.dto.ConnectFamilyMemberRequest;
 import com.withgahyo.domain.family.dto.FamilyMemberCandidateResponse;
 import com.withgahyo.domain.family.dto.FamilyMemberResponse;
+import com.withgahyo.domain.family.dto.FamilyMembersResponse;
 import com.withgahyo.domain.family.entity.FamilyRelation;
 import com.withgahyo.domain.family.exception.FamilyErrorCode;
 import com.withgahyo.domain.family.repository.FamilyRelationRepository;
@@ -23,6 +24,11 @@ public class FamilyService {
 	public FamilyService(UserRepository userRepository, FamilyRelationRepository familyRelationRepository) {
 		this.userRepository = userRepository;
 		this.familyRelationRepository = familyRelationRepository;
+	}
+
+	@Transactional(readOnly = true)
+	public FamilyMembersResponse getFamilyMembers(Long userId) {
+		return FamilyMembersResponse.from(familyRelationRepository.findActiveRelationsByUserId(userId));
 	}
 
 	@Transactional(readOnly = true)

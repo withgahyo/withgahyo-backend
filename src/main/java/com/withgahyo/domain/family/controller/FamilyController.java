@@ -1,7 +1,6 @@
 package com.withgahyo.domain.family.controller;
 
 import com.withgahyo.domain.family.dto.ConnectFamilyMemberRequest;
-import com.withgahyo.domain.family.dto.FamilyMemberCandidateResponse;
 import com.withgahyo.domain.family.dto.FamilyMemberResponse;
 import com.withgahyo.domain.family.service.FamilyService;
 import com.withgahyo.global.exception.BusinessException;
@@ -10,7 +9,6 @@ import com.withgahyo.global.response.ApiResponse;
 import com.withgahyo.global.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,12 +29,16 @@ public class FamilyController {
 		this.familyService = familyService;
 	}
 
-	@GetMapping("/candidates")
-	public ApiResponse<FamilyMemberCandidateResponse> findCandidate(
+	@GetMapping
+	public ApiResponse<?> getFamilyMembers(
 		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-		@RequestParam @NotBlank @Email String email
+		@RequestParam(required = false) @Email String email
 	) {
-		return ApiResponse.success(familyService.findCandidate(requireUserId(authenticatedUser), email));
+		Long userId = requireUserId(authenticatedUser);
+		if (email != null) {
+			return ApiResponse.success(familyService.findCandidate(userId, email));
+		}
+		return ApiResponse.success(familyService.getFamilyMembers(userId));
 	}
 
 	@PostMapping
