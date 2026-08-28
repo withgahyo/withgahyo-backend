@@ -1,22 +1,32 @@
 package com.withgahyo.domain.course.service;
 
+import com.withgahyo.domain.album.entity.Album;
+import com.withgahyo.domain.album.repository.AlbumRepository;
+import com.withgahyo.domain.course.dto.CourseDetailResponse;
 import com.withgahyo.domain.course.dto.CreateCourseRequest;
 import com.withgahyo.domain.course.dto.CreateCourseResponse;
 import com.withgahyo.domain.course.entity.Course;
 import com.withgahyo.domain.course.entity.CourseInterestKeyword;
 import com.withgahyo.domain.course.entity.CourseKeyword;
+import com.withgahyo.domain.course.entity.CourseLikeId;
 import com.withgahyo.domain.course.entity.CourseMustVisitPlace;
 import com.withgahyo.domain.course.entity.CourseParticipant;
+import com.withgahyo.domain.course.entity.CourseScheduleItem;
 import com.withgahyo.domain.course.exception.CourseErrorCode;
 import com.withgahyo.domain.course.repository.CourseInterestKeywordRepository;
 import com.withgahyo.domain.course.repository.CourseKeywordRepository;
+import com.withgahyo.domain.course.repository.CourseLikeRepository;
 import com.withgahyo.domain.course.repository.CourseMustVisitPlaceRepository;
 import com.withgahyo.domain.course.repository.CourseParticipantRepository;
 import com.withgahyo.domain.course.repository.CourseRepository;
+import com.withgahyo.domain.course.repository.CourseScheduleItemRepository;
 import com.withgahyo.domain.family.entity.FamilyRelation;
 import com.withgahyo.domain.family.repository.FamilyRelationRepository;
+import com.withgahyo.domain.place.entity.AccessibilityStatus;
 import com.withgahyo.domain.place.entity.Place;
+import com.withgahyo.domain.place.entity.PlaceAccessibility;
 import com.withgahyo.domain.place.entity.Region;
+import com.withgahyo.domain.place.repository.PlaceAccessibilityRepository;
 import com.withgahyo.domain.place.repository.PlaceRepository;
 import com.withgahyo.domain.place.repository.RegionRepository;
 import com.withgahyo.domain.user.entity.User;
@@ -25,8 +35,12 @@ import com.withgahyo.global.exception.BusinessException;
 import com.withgahyo.global.exception.code.ErrorCode;
 import com.withgahyo.global.exception.code.SecurityErrorCode;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +52,10 @@ public class CourseService {
 	private final CourseKeywordRepository courseKeywordRepository;
 	private final CourseMustVisitPlaceRepository courseMustVisitPlaceRepository;
 	private final CourseInterestKeywordRepository courseInterestKeywordRepository;
+	private final CourseLikeRepository courseLikeRepository;
+	private final CourseScheduleItemRepository courseScheduleItemRepository;
+	private final AlbumRepository albumRepository;
+	private final PlaceAccessibilityRepository placeAccessibilityRepository;
 	private final FamilyRelationRepository familyRelationRepository;
 	private final PlaceRepository placeRepository;
 	private final RegionRepository regionRepository;
@@ -49,6 +67,10 @@ public class CourseService {
 		CourseKeywordRepository courseKeywordRepository,
 		CourseMustVisitPlaceRepository courseMustVisitPlaceRepository,
 		CourseInterestKeywordRepository courseInterestKeywordRepository,
+		CourseLikeRepository courseLikeRepository,
+		CourseScheduleItemRepository courseScheduleItemRepository,
+		AlbumRepository albumRepository,
+		PlaceAccessibilityRepository placeAccessibilityRepository,
 		FamilyRelationRepository familyRelationRepository,
 		PlaceRepository placeRepository,
 		RegionRepository regionRepository,
@@ -59,6 +81,10 @@ public class CourseService {
 		this.courseKeywordRepository = courseKeywordRepository;
 		this.courseMustVisitPlaceRepository = courseMustVisitPlaceRepository;
 		this.courseInterestKeywordRepository = courseInterestKeywordRepository;
+		this.courseLikeRepository = courseLikeRepository;
+		this.courseScheduleItemRepository = courseScheduleItemRepository;
+		this.albumRepository = albumRepository;
+		this.placeAccessibilityRepository = placeAccessibilityRepository;
 		this.familyRelationRepository = familyRelationRepository;
 		this.placeRepository = placeRepository;
 		this.regionRepository = regionRepository;
@@ -97,6 +123,50 @@ public class CourseService {
 			.toList());
 
 		return CreateCourseResponse.from(course);
+	}
+
+	@Transactional(readOnly = true)
+	public CourseDetailResponse getCourseDetail(Long userId, Long courseId) {
+		Course course = findActiveCourse(courseId);
+		validateOwnerOrParticipant(userId, course);
+
+		List<CourseParticipant> participants = courseParticipantRepository.findAllByCourseId(courseId);
+		List<CourseKeyword> keywords = courseKeywordRepository.findAllByCourseId(courseId);
+		List<CourseScheduleItem> scheduleItems = courseScheduleItemRepository.findAllByCourseId(courseId);
+		Map<Long, List<String>> accessibilitySummaries = findAccessibilitySummaries(scheduleItems);
+		Long albumId = albumRepository.findFirstByCourseCourseIdOrderByAlbumIdAsc(courseId)
+			.map(Album::getAlbumId)
+			.orElse(null);
+
+		return new CourseDetailResponse(
+			course.getCourseId(),
+			course.getTitle(),
+			course.getStatus(),
+			course.getStartDate(),
+			course.getEndDate(),
+			daysUntilTrip(course),
+			new CourseDetailResponse.RegionResponse(
+				course.getRegion().getAreaCode(),
+				course.getRegion().getSigunguCode(),
+				course.getRegion().getName()
+			),
+			course.getImageUrl(),
+			keywords.stream()
+				.map(keyword -> keyword.getKeyword().getName())
+				.toList(),
+			courseLikeRepository.existsById(CourseLikeId.of(userId, courseId)),
+			courseLikeRepository.countByCourseCourseId(courseId),
+			albumId,
+			participants.stream()
+				.map(participant -> new CourseDetailResponse.ParticipantResponse(
+					participant.getUser().getUserId(),
+					participant.getNameSnapshot(),
+					participant.getRelationshipSnapshot(),
+					participant.getProfileImageUrlSnapshot()
+				))
+				.toList(),
+			toDayResponses(course, scheduleItems, accessibilitySummaries)
+		);
 	}
 
 	private void validatePeriod(LocalDate startDate, LocalDate endDate) {
@@ -151,5 +221,85 @@ public class CourseService {
 	private boolean isInRegion(Region region, Place place) {
 		return region.getAreaCode().equals(place.getRegion().getAreaCode())
 			&& region.getSigunguCode().equals(place.getRegion().getSigunguCode());
+	}
+
+	private Course findActiveCourse(Long courseId) {
+		return courseRepository.findActiveById(courseId)
+			.orElseThrow(() -> new BusinessException(CourseErrorCode.COURSE_NOT_FOUND));
+	}
+
+	private void validateOwnerOrParticipant(Long userId, Course course) {
+		if (course.getCreatorUser().getUserId().equals(userId)) {
+			return;
+		}
+		if (courseParticipantRepository.existsByCourseIdAndUserId(course.getCourseId(), userId)) {
+			return;
+		}
+		throw new BusinessException(CourseErrorCode.COURSE_ACCESS_DENIED);
+	}
+
+	private long daysUntilTrip(Course course) {
+		return Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), course.getStartDate()));
+	}
+
+	private Map<Long, List<String>> findAccessibilitySummaries(List<CourseScheduleItem> scheduleItems) {
+		List<Long> placeIds = scheduleItems.stream()
+			.map(item -> item.getPlace().getPlaceId())
+			.distinct()
+			.toList();
+		if (placeIds.isEmpty()) {
+			return Map.of();
+		}
+		return placeAccessibilityRepository.findAllByPlaceIdsAndStatus(placeIds, AccessibilityStatus.AVAILABLE).stream()
+			.collect(Collectors.groupingBy(
+				accessibility -> accessibility.getPlace().getPlaceId(),
+				Collectors.mapping(accessibility -> accessibility.getFacility().getName(), Collectors.toList())
+			));
+	}
+
+	private List<CourseDetailResponse.DayResponse> toDayResponses(
+		Course course,
+		List<CourseScheduleItem> scheduleItems,
+		Map<Long, List<String>> accessibilitySummaries
+	) {
+		return scheduleItems.stream()
+			.collect(Collectors.groupingBy(CourseScheduleItem::getDayNumber))
+			.entrySet()
+			.stream()
+			.sorted(Map.Entry.comparingByKey())
+			.map(entry -> new CourseDetailResponse.DayResponse(
+				entry.getKey(),
+				course.getStartDate().plusDays(entry.getKey() - 1L),
+				entry.getValue()
+					.stream()
+					.sorted(Comparator.comparing(CourseScheduleItem::getVisitOrder))
+					.map(item -> toPlaceResponse(item, accessibilitySummaries))
+					.toList()
+			))
+			.toList();
+	}
+
+	private CourseDetailResponse.PlaceResponse toPlaceResponse(
+		CourseScheduleItem item,
+		Map<Long, List<String>> accessibilitySummaries
+	) {
+		Place place = item.getPlace();
+		return new CourseDetailResponse.PlaceResponse(
+			item.getScheduleItemId(),
+			item.getVisitOrder(),
+			place.getPlaceId(),
+			place.getName(),
+			place.getCat1(),
+			item.getArrivalTime(),
+			item.getDepartureTime(),
+			place.getLatitude(),
+			place.getLongitude(),
+			accessibilitySummaries.getOrDefault(place.getPlaceId(), List.of()),
+			new CourseDetailResponse.TransportToNextResponse(
+				item.getTransportModeToNext(),
+				item.getDurationMinutesToNext(),
+				item.getDistanceMetersToNext()
+			)
+		);
 	}
 }
