@@ -3,6 +3,7 @@ package com.withgahyo.domain.course.service;
 import com.withgahyo.domain.album.entity.Album;
 import com.withgahyo.domain.album.repository.AlbumRepository;
 import com.withgahyo.domain.course.dto.CourseDetailResponse;
+import com.withgahyo.domain.course.dto.CourseLikeResponse;
 import com.withgahyo.domain.course.dto.CreateCourseRequest;
 import com.withgahyo.domain.course.dto.CreateCourseResponse;
 import com.withgahyo.domain.course.entity.Course;
@@ -167,6 +168,13 @@ public class CourseService {
 				.toList(),
 			toDayResponses(course, scheduleItems, accessibilitySummaries)
 		);
+	}
+
+	@Transactional
+	public CourseLikeResponse likeCourse(Long userId, Long courseId) {
+		findActiveCourse(courseId);
+		courseLikeRepository.insertIgnore(userId, courseId);
+		return CourseLikeResponse.of(courseId, true);
 	}
 
 	private void validatePeriod(LocalDate startDate, LocalDate endDate) {

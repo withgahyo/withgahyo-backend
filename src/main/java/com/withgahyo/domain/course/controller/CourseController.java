@@ -3,6 +3,7 @@ package com.withgahyo.domain.course.controller;
 import com.withgahyo.domain.course.dto.CourseDetailResponse;
 import com.withgahyo.domain.course.dto.CourseFamilyMembersResponse;
 import com.withgahyo.domain.course.dto.CourseKeywordSuggestionsResponse;
+import com.withgahyo.domain.course.dto.CourseLikeResponse;
 import com.withgahyo.domain.course.dto.CreateCourseRequest;
 import com.withgahyo.domain.course.dto.CreateCourseResponse;
 import com.withgahyo.domain.course.service.CourseOptionService;
@@ -58,6 +59,14 @@ public class CourseController {
 		@PathVariable Long courseId
 	) {
 		return ApiResponse.success(courseService.getCourseDetail(requireUserId(authenticatedUser), courseId));
+	}
+
+	@PostMapping("/courses/{courseId}/likes")
+	public ApiResponse<CourseLikeResponse> likeCourse(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long courseId
+	) {
+		return ApiResponse.success(courseService.likeCourse(requireUserId(authenticatedUser), courseId));
 	}
 
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {
