@@ -177,6 +177,13 @@ public class CourseService {
 		return CourseLikeResponse.of(courseId, true);
 	}
 
+	@Transactional
+	public CourseLikeResponse unlikeCourse(Long userId, Long courseId) {
+		findActiveCourse(courseId);
+		courseLikeRepository.deleteByUserIdAndCourseId(userId, courseId);
+		return CourseLikeResponse.of(courseId, false);
+	}
+
 	private void validatePeriod(LocalDate startDate, LocalDate endDate) {
 		LocalDate today = LocalDate.now();
 		if (startDate.isBefore(today) || endDate.isBefore(startDate)) {

@@ -14,6 +14,7 @@ import com.withgahyo.global.response.ApiResponse;
 import com.withgahyo.global.security.AuthenticatedUser;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -67,6 +68,14 @@ public class CourseController {
 		@PathVariable Long courseId
 	) {
 		return ApiResponse.success(courseService.likeCourse(requireUserId(authenticatedUser), courseId));
+	}
+
+	@DeleteMapping("/courses/{courseId}/likes")
+	public ApiResponse<CourseLikeResponse> unlikeCourse(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long courseId
+	) {
+		return ApiResponse.success(courseService.unlikeCourse(requireUserId(authenticatedUser), courseId));
 	}
 
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {
