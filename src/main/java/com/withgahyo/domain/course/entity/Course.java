@@ -112,6 +112,14 @@ public class Course {
 		return !isDeleted() && status == CourseStatus.DRAFT;
 	}
 
+	public void softDelete() {
+		if (deletedAt != null) {
+			return;
+		}
+		this.status = CourseStatus.CANCELED;
+		this.deletedAt = LocalDateTime.now();
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();

@@ -99,6 +99,15 @@ public class CourseController {
 		return ApiResponse.success(courseService.updateCourseBasicInfo(requireUserId(authenticatedUser), courseId, request));
 	}
 
+	@DeleteMapping("/courses/{courseId}")
+	public ApiResponse<Void> deleteCourse(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long courseId
+	) {
+		courseService.deleteCourse(requireUserId(authenticatedUser), courseId);
+		return ApiResponse.ok();
+	}
+
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {
 		if (authenticatedUser == null) {
 			throw new BusinessException(SecurityErrorCode.UNAUTHORIZED);

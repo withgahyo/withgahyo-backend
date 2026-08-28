@@ -207,6 +207,13 @@ public class CourseService {
 		return UpdateCourseResponse.from(course);
 	}
 
+	@Transactional
+	public void deleteCourse(Long userId, Long courseId) {
+		Course course = findActiveCourse(courseId);
+		validateOwnerOrParticipant(userId, course);
+		course.softDelete();
+	}
+
 	private void validatePeriod(LocalDate startDate, LocalDate endDate) {
 		LocalDate today = LocalDate.now();
 		if (startDate.isBefore(today) || endDate.isBefore(startDate)) {
