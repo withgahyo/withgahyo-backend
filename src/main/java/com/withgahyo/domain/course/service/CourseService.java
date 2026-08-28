@@ -7,6 +7,8 @@ import com.withgahyo.domain.course.dto.CourseDetailResponse;
 import com.withgahyo.domain.course.dto.CourseLikeResponse;
 import com.withgahyo.domain.course.dto.CreateCourseRequest;
 import com.withgahyo.domain.course.dto.CreateCourseResponse;
+import com.withgahyo.domain.course.dto.UpdateCourseRequest;
+import com.withgahyo.domain.course.dto.UpdateCourseResponse;
 import com.withgahyo.domain.course.entity.Course;
 import com.withgahyo.domain.course.entity.CourseInterestKeyword;
 import com.withgahyo.domain.course.entity.CourseKeyword;
@@ -193,6 +195,18 @@ public class CourseService {
 		return CourseConfirmResponse.from(course);
 	}
 
+	@Transactional
+	public UpdateCourseResponse updateCourseBasicInfo(Long userId, Long courseId, UpdateCourseRequest request) {
+		if (request.hasNoValue()) {
+			throw new BusinessException(CourseErrorCode.COURSE_UPDATE_EMPTY);
+		}
+		validateCourseTitle(request.normalizedTitle());
+		Course course = findActiveCourse(courseId);
+		validateOwnerOrParticipant(userId, course);
+		course.updateBasicInfo(request.normalizedTitle());
+		return UpdateCourseResponse.from(course);
+	}
+
 	private void validatePeriod(LocalDate startDate, LocalDate endDate) {
 		LocalDate today = LocalDate.now();
 		if (startDate.isBefore(today) || endDate.isBefore(startDate)) {
@@ -245,6 +259,12 @@ public class CourseService {
 	private boolean isInRegion(Region region, Place place) {
 		return region.getAreaCode().equals(place.getRegion().getAreaCode())
 			&& region.getSigunguCode().equals(place.getRegion().getSigunguCode());
+	}
+
+	private void validateCourseTitle(String title) {
+		if (title.length() < 2 || title.length() > 30) {
+			throw new BusinessException(CourseErrorCode.INVALID_COURSE_TITLE);
+		}
 	}
 
 	private Course findActiveCourse(Long courseId) {

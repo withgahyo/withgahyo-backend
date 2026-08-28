@@ -7,6 +7,8 @@ import com.withgahyo.domain.course.dto.CourseKeywordSuggestionsResponse;
 import com.withgahyo.domain.course.dto.CourseLikeResponse;
 import com.withgahyo.domain.course.dto.CreateCourseRequest;
 import com.withgahyo.domain.course.dto.CreateCourseResponse;
+import com.withgahyo.domain.course.dto.UpdateCourseRequest;
+import com.withgahyo.domain.course.dto.UpdateCourseResponse;
 import com.withgahyo.domain.course.service.CourseOptionService;
 import com.withgahyo.domain.course.service.CourseService;
 import com.withgahyo.global.exception.BusinessException;
@@ -17,6 +19,7 @@ import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -85,6 +88,15 @@ public class CourseController {
 		@PathVariable Long courseId
 	) {
 		return ApiResponse.success(courseService.confirmCourse(requireUserId(authenticatedUser), courseId));
+	}
+
+	@PatchMapping("/courses/{courseId}")
+	public ApiResponse<UpdateCourseResponse> updateCourse(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long courseId,
+		@Valid @RequestBody UpdateCourseRequest request
+	) {
+		return ApiResponse.success(courseService.updateCourseBasicInfo(requireUserId(authenticatedUser), courseId, request));
 	}
 
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {

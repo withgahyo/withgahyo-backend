@@ -96,6 +96,22 @@ public class Course {
 		this.confirmedAt = LocalDateTime.now();
 	}
 
+	public void updateBasicInfo(String title) {
+		if (!isEditable()) {
+			throw new BusinessException(CourseErrorCode.COURSE_NOT_EDITABLE);
+		}
+		this.title = title.strip();
+		this.updatedAt = LocalDateTime.now();
+	}
+
+	public boolean isDeleted() {
+		return deletedAt != null;
+	}
+
+	public boolean isEditable() {
+		return !isDeleted() && status == CourseStatus.DRAFT;
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();
