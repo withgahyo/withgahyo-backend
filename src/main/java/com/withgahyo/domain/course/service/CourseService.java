@@ -2,6 +2,7 @@ package com.withgahyo.domain.course.service;
 
 import com.withgahyo.domain.album.entity.Album;
 import com.withgahyo.domain.album.repository.AlbumRepository;
+import com.withgahyo.domain.course.dto.CourseConfirmResponse;
 import com.withgahyo.domain.course.dto.CourseDetailResponse;
 import com.withgahyo.domain.course.dto.CourseLikeResponse;
 import com.withgahyo.domain.course.dto.CreateCourseRequest;
@@ -182,6 +183,14 @@ public class CourseService {
 		findActiveCourse(courseId);
 		courseLikeRepository.deleteByUserIdAndCourseId(userId, courseId);
 		return CourseLikeResponse.of(courseId, false);
+	}
+
+	@Transactional
+	public CourseConfirmResponse confirmCourse(Long userId, Long courseId) {
+		Course course = findActiveCourse(courseId);
+		validateOwnerOrParticipant(userId, course);
+		course.confirm();
+		return CourseConfirmResponse.from(course);
 	}
 
 	private void validatePeriod(LocalDate startDate, LocalDate endDate) {

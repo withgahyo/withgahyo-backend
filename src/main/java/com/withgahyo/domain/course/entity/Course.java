@@ -1,7 +1,9 @@
 package com.withgahyo.domain.course.entity;
 
+import com.withgahyo.domain.course.exception.CourseErrorCode;
 import com.withgahyo.domain.place.entity.Region;
 import com.withgahyo.domain.user.entity.User;
+import com.withgahyo.global.exception.BusinessException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -81,6 +83,17 @@ public class Course {
 		course.endDate = endDate;
 		course.status = CourseStatus.DRAFT;
 		return course;
+	}
+
+	public void confirm() {
+		if (confirmedAt != null || status == CourseStatus.UPCOMING) {
+			throw new BusinessException(CourseErrorCode.COURSE_ALREADY_CONFIRMED);
+		}
+		if (status != CourseStatus.DRAFT) {
+			throw new BusinessException(CourseErrorCode.COURSE_NOT_CONFIRMABLE);
+		}
+		this.status = CourseStatus.UPCOMING;
+		this.confirmedAt = LocalDateTime.now();
 	}
 
 	@PrePersist
