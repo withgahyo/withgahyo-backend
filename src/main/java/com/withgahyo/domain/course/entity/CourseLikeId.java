@@ -18,4 +18,11 @@ public class CourseLikeId implements Serializable {
 
 	@Column(name = "course_id")
 	private Long courseId;
+
+	public static CourseLikeId of(Long userId, Long courseId) {
+		CourseLikeId id = new CourseLikeId();
+		id.userId = userId;
+		id.courseId = courseId;
+		return id;
+	}
 }
