@@ -65,4 +65,28 @@ public class RecommendationCandidateItem {
 
 	@Column(name = "distance_meters_to_next")
 	private Integer distanceMetersToNext;
+
+	public static RecommendationCandidateItem create(
+		RecommendationCandidate recommendationCandidate,
+		Place place,
+		Integer dayNumber,
+		Integer visitOrder,
+		LocalTime arrivalTime,
+		LocalTime departureTime,
+		TransportMode transportModeToNext,
+		Integer durationMinutesToNext,
+		Integer distanceMetersToNext
+	) {
+		RecommendationCandidateItem item = new RecommendationCandidateItem();
+		item.recommendationCandidate = recommendationCandidate;
+		item.place = place;
+		item.dayNumber = dayNumber;
+		item.visitOrder = visitOrder;
+		item.arrivalTime = arrivalTime;
+		item.departureTime = departureTime;
+		item.transportModeToNext = transportModeToNext;
+		item.durationMinutesToNext = durationMinutesToNext;
+		item.distanceMetersToNext = distanceMetersToNext;
+		return item;
+	}
 }

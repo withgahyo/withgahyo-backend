@@ -62,6 +62,31 @@ public class RecommendationCandidate {
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
+	public static RecommendationCandidate create(
+		RecommendationJob recommendationJob,
+		Integer rank,
+		String title,
+		String description,
+		BigDecimal fitScore,
+		Integer totalDistanceMeters,
+		Integer totalWalkingTimeMinutes
+	) {
+		RecommendationCandidate candidate = new RecommendationCandidate();
+		candidate.recommendationJob = recommendationJob;
+		candidate.rank = rank;
+		candidate.title = title;
+		candidate.description = description;
+		candidate.fitScore = fitScore;
+		candidate.totalDistanceMeters = totalDistanceMeters;
+		candidate.totalWalkingTimeMinutes = totalWalkingTimeMinutes;
+		candidate.selected = false;
+		return candidate;
+	}
+
+	public void select() {
+		this.selected = true;
+	}
+
 	@PrePersist
 	void prePersist() {
 		this.createdAt = LocalDateTime.now();

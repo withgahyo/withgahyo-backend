@@ -1,0 +1,357 @@
+package com.withgahyo.domain.recommendation.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
+import com.withgahyo.domain.album.entity.Album;
+import com.withgahyo.domain.album.repository.AlbumRepository;
+import com.withgahyo.domain.course.entity.Course;
+import com.withgahyo.domain.course.entity.CourseScheduleItem;
+import com.withgahyo.domain.course.entity.CourseStatus;
+import com.withgahyo.domain.course.entity.TransportMode;
+import com.withgahyo.domain.course.repository.CourseParticipantRepository;
+import com.withgahyo.domain.course.repository.CourseRepository;
+import com.withgahyo.domain.course.repository.CourseScheduleItemRepository;
+import com.withgahyo.domain.place.entity.Place;
+import com.withgahyo.domain.place.entity.Region;
+import com.withgahyo.domain.recommendation.dto.RecommendationCandidateDetailResponse;
+import com.withgahyo.domain.recommendation.dto.RecommendationCandidatesResponse;
+import com.withgahyo.domain.recommendation.dto.RecommendationStatusResponse;
+import com.withgahyo.domain.recommendation.dto.SelectRecommendationCandidateRequest;
+import com.withgahyo.domain.recommendation.dto.SelectRecommendationCandidateResponse;
+import com.withgahyo.domain.recommendation.dto.StartRecommendationRequest;
+import com.withgahyo.domain.recommendation.dto.StartRecommendationResponse;
+import com.withgahyo.domain.recommendation.entity.RecommendationCandidate;
+import com.withgahyo.domain.recommendation.entity.RecommendationCandidateItem;
+import com.withgahyo.domain.recommendation.entity.RecommendationJob;
+import com.withgahyo.domain.recommendation.entity.RecommendationJobStatus;
+import com.withgahyo.domain.recommendation.exception.RecommendationErrorCode;
+import com.withgahyo.domain.recommendation.repository.RecommendationCandidateItemRepository;
+import com.withgahyo.domain.recommendation.repository.RecommendationCandidateRepository;
+import com.withgahyo.domain.recommendation.repository.RecommendationJobRepository;
+import com.withgahyo.global.exception.BusinessException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+@ExtendWith(MockitoExtension.class)
+class RecommendationServiceTest {
+
+	@Mock
+	private RecommendationJobRepository recommendationJobRepository;
+
+	@Mock
+	private RecommendationCandidateRepository recommendationCandidateRepository;
+
+	@Mock
+	private RecommendationCandidateItemRepository recommendationCandidateItemRepository;
+
+	@Mock
+	private CourseRepository courseRepository;
+
+	@Mock
+	private CourseParticipantRepository courseParticipantRepository;
+
+	@Mock
+	private CourseScheduleItemRepository courseScheduleItemRepository;
+
+	@Mock
+	private AlbumRepository albumRepository;
+
+	private RecommendationService recommendationService;
+
+	@BeforeEach
+	void setUp() {
+		recommendationService = new RecommendationService(
+			recommendationJobRepository,
+			recommendationCandidateRepository,
+			recommendationCandidateItemRepository,
+			courseRepository,
+			courseParticipantRepository,
+			courseScheduleItemRepository,
+			albumRepository
+		);
+	}
+
+	@Test
+	void startGeneration_success_createsPendingJob() {
+		Course course = courseWithId(456L);
+		RecommendationJob savedJob = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+
+		given(courseRepository.findById(456L)).willReturn(Optional.of(course));
+		given(recommendationJobRepository.save(org.mockito.ArgumentMatchers.any(RecommendationJob.class)))
+			.willReturn(savedJob);
+
+		StartRecommendationResponse response = recommendationService.startGeneration(
+			1L,
+			456L,
+			new StartRecommendationRequest(null, List.of(), null)
+		);
+
+		assertThat(response.generationId()).isEqualTo(789L);
+		assertThat(response.courseId()).isEqualTo(456L);
+		assertThat(response.status()).isEqualTo(RecommendationJobStatus.PENDING);
+		verify(recommendationJobRepository).save(org.mockito.ArgumentMatchers.any(RecommendationJob.class));
+	}
+
+	@Test
+	void startGeneration_fail_whenUserCannotAccessCourse() {
+		Course course = courseWithId(456L);
+
+		given(courseRepository.findById(456L)).willReturn(Optional.of(course));
+		given(courseParticipantRepository.existsByCourseIdAndUserId(456L, 99L)).willReturn(false);
+
+		assertThatThrownBy(() -> recommendationService.startGeneration(99L, 456L, null))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(RecommendationErrorCode.RECOMMENDATION_ACCESS_DENIED);
+	}
+
+	@Test
+	void getGenerationStatus_success() {
+		Course course = courseWithId(456L);
+		RecommendationJob job = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(job, "recommendationJobId", 789L);
+		job.start();
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+
+		RecommendationStatusResponse response = recommendationService.getGenerationStatus(1L, 789L);
+
+		assertThat(response.generationId()).isEqualTo(789L);
+		assertThat(response.courseId()).isEqualTo(456L);
+		assertThat(response.status()).isEqualTo(RecommendationJobStatus.RUNNING);
+		assertThat(response.startedAt()).isNotNull();
+	}
+
+	@Test
+	void getCandidates_fail_whenJobIsNotCompleted() {
+		Course course = courseWithId(456L);
+		RecommendationJob job = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(job, "recommendationJobId", 789L);
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+
+		assertThatThrownBy(() -> recommendationService.getCandidates(1L, 789L))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(RecommendationErrorCode.RECOMMENDATION_JOB_NOT_COMPLETED);
+	}
+
+	@Test
+	void getCandidates_success_returnsSummaryList() {
+		Course course = courseWithId(456L);
+		RecommendationJob job = completedJobWithId(789L, course);
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+		given(recommendationCandidateRepository.findAllByRecommendationJobRecommendationJobIdOrderByRankAsc(789L))
+			.willReturn(List.of(candidate));
+
+		RecommendationCandidatesResponse response = recommendationService.getCandidates(1L, 789L);
+
+		assertThat(response.generationId()).isEqualTo(789L);
+		assertThat(response.candidates()).hasSize(1);
+		assertThat(response.candidates().get(0).candidateId()).isEqualTo(1001L);
+		assertThat(response.candidates().get(0).summary()).isEqualTo("이동 부담을 줄인 코스입니다.");
+		assertThat(response.candidates().get(0).totalDistanceKm()).isEqualByComparingTo("12.4");
+	}
+
+	@Test
+	void getCandidateDetail_success_returnsOrderedDays() {
+		Course course = courseWithId(456L);
+		RecommendationJob job = completedJobWithId(789L, course);
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+		RecommendationCandidateItem item = candidateItemWithId(2001L, candidate, placeWithId(501L), 1, 1);
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+		given(recommendationCandidateRepository.findByRecommendationCandidateIdAndRecommendationJobRecommendationJobId(1001L, 789L))
+			.willReturn(Optional.of(candidate));
+		given(recommendationCandidateItemRepository.findAllByRecommendationCandidateRecommendationCandidateIdOrderByDayNumberAscVisitOrderAsc(1001L))
+			.willReturn(List.of(item));
+
+		RecommendationCandidateDetailResponse response = recommendationService.getCandidateDetail(1L, 789L, 1001L);
+
+		assertThat(response.candidateId()).isEqualTo(1001L);
+		assertThat(response.days()).hasSize(1);
+		assertThat(response.days().get(0).places().get(0).placeId()).isEqualTo(501L);
+		assertThat(response.days().get(0).places().get(0).transportToNext().mode()).isEqualTo(TransportMode.CAR);
+	}
+
+	@Test
+	void selectCandidate_success_copiesScheduleAndCreatesAlbum() {
+		Course course = courseWithId(456L);
+		RecommendationJob job = completedJobWithId(789L, course);
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+		RecommendationCandidateItem item = candidateItemWithId(2001L, candidate, placeWithId(501L), 1, 1);
+		Album album = Album.create(course);
+		ReflectionTestUtils.setField(album, "albumId", 3001L);
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+		given(recommendationCandidateRepository.findByRecommendationCandidateIdAndRecommendationJobRecommendationJobId(1001L, 789L))
+			.willReturn(Optional.of(candidate));
+		given(recommendationCandidateRepository.findSelectedByRecommendationJobId(789L))
+			.willReturn(Optional.empty());
+		given(recommendationCandidateItemRepository.findAllByRecommendationCandidateRecommendationCandidateIdOrderByDayNumberAscVisitOrderAsc(1001L))
+			.willReturn(List.of(item));
+		given(albumRepository.save(org.mockito.ArgumentMatchers.any(Album.class))).willReturn(album);
+
+		SelectRecommendationCandidateResponse response = recommendationService.selectCandidate(
+			1L,
+			789L,
+			new SelectRecommendationCandidateRequest(1001L)
+		);
+
+		assertThat(candidate.isSelected()).isTrue();
+		assertThat(course.getStatus()).isEqualTo(CourseStatus.UPCOMING);
+		assertThat(response.albumId()).isEqualTo(3001L);
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<List<CourseScheduleItem>> captor = ArgumentCaptor.forClass(List.class);
+		verify(courseScheduleItemRepository).saveAll(captor.capture());
+		assertThat(captor.getValue()).hasSize(1);
+		assertThat(captor.getValue().get(0).getPlace().getPlaceId()).isEqualTo(501L);
+	}
+
+	@Test
+	void selectCandidate_success_whenSameCandidateAlreadySelected() {
+		Course course = courseWithId(456L);
+		RecommendationJob job = completedJobWithId(789L, course);
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+		candidate.select();
+		Album album = Album.create(course);
+		ReflectionTestUtils.setField(album, "albumId", 3001L);
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+		given(recommendationCandidateRepository.findByRecommendationCandidateIdAndRecommendationJobRecommendationJobId(1001L, 789L))
+			.willReturn(Optional.of(candidate));
+		given(recommendationCandidateRepository.findSelectedByRecommendationJobId(789L))
+			.willReturn(Optional.of(candidate));
+		given(albumRepository.findFirstByCourseCourseIdOrderByAlbumIdAsc(456L)).willReturn(Optional.of(album));
+
+		SelectRecommendationCandidateResponse response = recommendationService.selectCandidate(
+			1L,
+			789L,
+			new SelectRecommendationCandidateRequest(1001L)
+		);
+
+		assertThat(response.selectedCandidateId()).isEqualTo(1001L);
+		assertThat(response.albumId()).isEqualTo(3001L);
+	}
+
+	@Test
+	void selectCandidate_fail_whenDifferentCandidateAlreadySelected() {
+		Course course = courseWithId(456L);
+		RecommendationJob job = completedJobWithId(789L, course);
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+		RecommendationCandidate selected = candidateWithId(1002L, job, 2);
+		selected.select();
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+		given(recommendationCandidateRepository.findByRecommendationCandidateIdAndRecommendationJobRecommendationJobId(1001L, 789L))
+			.willReturn(Optional.of(candidate));
+		given(recommendationCandidateRepository.findSelectedByRecommendationJobId(789L))
+			.willReturn(Optional.of(selected));
+
+		assertThatThrownBy(() -> recommendationService.selectCandidate(
+			1L,
+			789L,
+			new SelectRecommendationCandidateRequest(1001L)
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting("errorCode")
+			.isEqualTo(RecommendationErrorCode.RECOMMENDATION_CANDIDATE_ALREADY_SELECTED);
+	}
+
+	private Course courseWithId(Long courseId) {
+		UserFixture fixture = new UserFixture();
+		Course course = Course.create(
+			fixture.creator(),
+			Region.create("3", "1", "대전광역시 동구"),
+			"대전 효도 여행",
+			LocalDate.now().plusDays(1),
+			LocalDate.now().plusDays(2)
+		);
+		ReflectionTestUtils.setField(course, "courseId", courseId);
+		return course;
+	}
+
+	private RecommendationJob completedJobWithId(Long jobId, Course course) {
+		RecommendationJob job = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(job, "recommendationJobId", jobId);
+		job.start();
+		job.complete();
+		return job;
+	}
+
+	private RecommendationCandidate candidateWithId(Long candidateId, RecommendationJob job, int rank) {
+		RecommendationCandidate candidate = RecommendationCandidate.create(
+			job,
+			rank,
+			"부모님 편안함 우선 코스",
+			"이동 부담을 줄인 코스입니다.",
+			new BigDecimal("92.0"),
+			12400,
+			95
+		);
+		ReflectionTestUtils.setField(candidate, "recommendationCandidateId", candidateId);
+		return candidate;
+	}
+
+	private RecommendationCandidateItem candidateItemWithId(
+		Long itemId,
+		RecommendationCandidate candidate,
+		Place place,
+		int dayNumber,
+		int visitOrder
+	) {
+		RecommendationCandidateItem item = RecommendationCandidateItem.create(
+			candidate,
+			place,
+			dayNumber,
+			visitOrder,
+			LocalTime.of(10, 0),
+			LocalTime.of(12, 0),
+			TransportMode.CAR,
+			24,
+			8400
+		);
+		ReflectionTestUtils.setField(item, "candidateItemId", itemId);
+		return item;
+	}
+
+	private Place placeWithId(Long placeId) {
+		Place place = Place.create(
+			"126508",
+			"12",
+			"TOUR_API",
+			"NATURE",
+			Region.create("3", "1", "대전광역시 동구"),
+			"한밭수목원",
+			"대전광역시 서구 둔산대로 169",
+			new BigDecimal("36.366"),
+			new BigDecimal("127.388"),
+			"https://example.com/place.jpg"
+		);
+		ReflectionTestUtils.setField(place, "placeId", placeId);
+		return place;
+	}
+
+	private record UserFixture(com.withgahyo.domain.user.entity.User creator) {
+		private UserFixture() {
+			this(com.withgahyo.domain.user.entity.User.create("KAKAO", "creator", "작성자", null));
+			ReflectionTestUtils.setField(creator, "userId", 1L);
+		}
+	}
+}
