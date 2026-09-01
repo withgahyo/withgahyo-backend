@@ -52,6 +52,29 @@ public class RecommendationJob {
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
+	public static RecommendationJob createPending(Course course) {
+		RecommendationJob job = new RecommendationJob();
+		job.course = course;
+		job.status = RecommendationJobStatus.PENDING;
+		return job;
+	}
+
+	public void start() {
+		this.status = RecommendationJobStatus.RUNNING;
+		this.startedAt = LocalDateTime.now();
+	}
+
+	public void complete() {
+		this.status = RecommendationJobStatus.COMPLETED;
+		this.completedAt = LocalDateTime.now();
+	}
+
+	public void fail(String errorMessage) {
+		this.status = RecommendationJobStatus.FAILED;
+		this.failedAt = LocalDateTime.now();
+		this.errorMessage = errorMessage;
+	}
+
 	@PrePersist
 	void prePersist() {
 		this.createdAt = LocalDateTime.now();
