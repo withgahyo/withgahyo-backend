@@ -49,6 +49,13 @@ public class Album {
 	@Column(name = "updated_at", nullable = false)
 	private LocalDateTime updatedAt;
 
+	public static Album create(Course course) {
+		Album album = new Album();
+		album.course = course;
+		album.title = course.getTitle();
+		return album;
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();

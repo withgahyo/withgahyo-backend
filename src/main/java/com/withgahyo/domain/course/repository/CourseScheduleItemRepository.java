@@ -16,4 +16,6 @@ public interface CourseScheduleItemRepository extends JpaRepository<CourseSchedu
 		order by csi.dayNumber asc, csi.visitOrder asc
 		""")
 	List<CourseScheduleItem> findAllByCourseId(@Param("courseId") Long courseId);
+
+	List<CourseScheduleItem> findAllByCourseCourseIdOrderByDayNumberAscVisitOrderAsc(Long courseId);
 }

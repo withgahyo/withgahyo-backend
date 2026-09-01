@@ -1,6 +1,7 @@
 package com.withgahyo.domain.course.entity;
 
 import com.withgahyo.domain.place.entity.Place;
+import com.withgahyo.domain.recommendation.entity.RecommendationCandidateItem;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -73,6 +74,44 @@ public class CourseScheduleItem {
 
 	@Column(name = "updated_at", nullable = false)
 	private LocalDateTime updatedAt;
+
+	public static CourseScheduleItem create(
+		Course course,
+		Place place,
+		Integer dayNumber,
+		Integer visitOrder,
+		LocalTime arrivalTime,
+		LocalTime departureTime,
+		TransportMode transportModeToNext,
+		Integer durationMinutesToNext,
+		Integer distanceMetersToNext
+	) {
+		CourseScheduleItem item = new CourseScheduleItem();
+		item.course = course;
+		item.place = place;
+		item.dayNumber = dayNumber;
+		item.visitOrder = visitOrder;
+		item.arrivalTime = arrivalTime;
+		item.departureTime = departureTime;
+		item.transportModeToNext = transportModeToNext;
+		item.durationMinutesToNext = durationMinutesToNext;
+		item.distanceMetersToNext = distanceMetersToNext;
+		return item;
+	}
+
+	public static CourseScheduleItem from(Course course, RecommendationCandidateItem candidateItem) {
+		return create(
+			course,
+			candidateItem.getPlace(),
+			candidateItem.getDayNumber(),
+			candidateItem.getVisitOrder(),
+			candidateItem.getArrivalTime(),
+			candidateItem.getDepartureTime(),
+			candidateItem.getTransportModeToNext(),
+			candidateItem.getDurationMinutesToNext(),
+			candidateItem.getDistanceMetersToNext()
+		);
+	}
 
 	@PrePersist
 	void prePersist() {
