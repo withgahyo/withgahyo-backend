@@ -1,8 +1,8 @@
 ---
-name: Bug Report
+name: 🐛 Bug Report
 about: 버그 수정이 필요한 이슈를 작성합니다.
-title: "[Bug] "
-labels: bug
+title: "[Fix] "
+labels: fix
 assignees: ''
 ---
 
