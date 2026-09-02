@@ -1,7 +1,7 @@
 ---
 name: ✨ Feature Request
 about: 새로운 기능 개발 이슈를 작성합니다.
-title: "[Feature] "
+title: "[Feat] "
 labels: feature
 assignees: ''
 ---
