@@ -1,5 +1,5 @@
 ---
-name: Refactoring
+name: 🔧 Refactoring
 about: 코드 구조 개선 또는 리팩토링 이슈를 작성합니다.
 title: "[Refactor] "
 labels: refactoring
