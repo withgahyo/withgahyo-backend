@@ -1,5 +1,5 @@
 ---
-name: Feature Request
+name: ✨ Feature Request
 about: 새로운 기능 개발 이슈를 작성합니다.
 title: "[Feature] "
 labels: feature
