@@ -37,6 +37,8 @@ auth:
       user-info-uri: ${GOOGLE_USER_INFO_URI:https://www.googleapis.com/oauth2/v3/userinfo}
 
 external:
+  ai-server:
+    base-url: ${AI_SERVER_BASE_URL:http://localhost:8001}
   tour-api:
     base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr/B551011/KorService2}
     service-key: ${TOUR_API_SERVICE_KEY:}

@@ -12,10 +12,13 @@ import com.withgahyo.domain.course.entity.CourseScheduleItem;
 import com.withgahyo.domain.course.entity.CourseStatus;
 import com.withgahyo.domain.course.entity.TransportMode;
 import com.withgahyo.domain.course.repository.CourseParticipantRepository;
+import com.withgahyo.domain.course.repository.CourseKeywordRepository;
+import com.withgahyo.domain.course.repository.CourseMustVisitPlaceRepository;
 import com.withgahyo.domain.course.repository.CourseRepository;
 import com.withgahyo.domain.course.repository.CourseScheduleItemRepository;
 import com.withgahyo.domain.place.entity.Place;
 import com.withgahyo.domain.place.entity.Region;
+import com.withgahyo.domain.place.repository.PlaceRepository;
 import com.withgahyo.domain.recommendation.dto.RecommendationCandidateDetailResponse;
 import com.withgahyo.domain.recommendation.dto.RecommendationCandidatesResponse;
 import com.withgahyo.domain.recommendation.dto.RecommendationStatusResponse;
@@ -31,7 +34,15 @@ import com.withgahyo.domain.recommendation.exception.RecommendationErrorCode;
 import com.withgahyo.domain.recommendation.repository.RecommendationCandidateItemRepository;
 import com.withgahyo.domain.recommendation.repository.RecommendationCandidateRepository;
 import com.withgahyo.domain.recommendation.repository.RecommendationJobRepository;
+import com.withgahyo.domain.user.repository.UserFacilityPreferenceRepository;
+import com.withgahyo.domain.user.repository.UserFoodPreferenceRepository;
+import com.withgahyo.domain.user.repository.UserOnboardingProfileRepository;
+import com.withgahyo.domain.user.repository.UserTourismPreferenceRepository;
 import com.withgahyo.global.exception.BusinessException;
+import com.withgahyo.infra.ai.RecommendationAiClient;
+import com.withgahyo.infra.ai.RecommendationAiException;
+import com.withgahyo.infra.ai.dto.AiRecommendationGenerateRequest;
+import com.withgahyo.infra.ai.dto.AiRecommendationGenerateResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -64,10 +75,34 @@ class RecommendationServiceTest {
 	private CourseParticipantRepository courseParticipantRepository;
 
 	@Mock
+	private CourseKeywordRepository courseKeywordRepository;
+
+	@Mock
+	private CourseMustVisitPlaceRepository courseMustVisitPlaceRepository;
+
+	@Mock
 	private CourseScheduleItemRepository courseScheduleItemRepository;
 
 	@Mock
 	private AlbumRepository albumRepository;
+
+	@Mock
+	private UserOnboardingProfileRepository userOnboardingProfileRepository;
+
+	@Mock
+	private UserTourismPreferenceRepository userTourismPreferenceRepository;
+
+	@Mock
+	private UserFoodPreferenceRepository userFoodPreferenceRepository;
+
+	@Mock
+	private UserFacilityPreferenceRepository userFacilityPreferenceRepository;
+
+	@Mock
+	private PlaceRepository placeRepository;
+
+	@Mock
+	private RecommendationAiClient recommendationAiClient;
 
 	private RecommendationService recommendationService;
 
@@ -79,20 +114,42 @@ class RecommendationServiceTest {
 			recommendationCandidateItemRepository,
 			courseRepository,
 			courseParticipantRepository,
+			courseKeywordRepository,
+			courseMustVisitPlaceRepository,
 			courseScheduleItemRepository,
-			albumRepository
+			albumRepository,
+			userOnboardingProfileRepository,
+			userTourismPreferenceRepository,
+			userFoodPreferenceRepository,
+			userFacilityPreferenceRepository,
+			placeRepository,
+			recommendationAiClient
 		);
 	}
 
 	@Test
-	void startGeneration_success_createsPendingJob() {
+	void startGeneration_success_callsAiServerAndStoresCandidates() {
 		Course course = courseWithId(456L);
 		RecommendationJob savedJob = RecommendationJob.createPending(course);
 		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+		Place place = placeWithId(501L);
+		AiRecommendationGenerateResponse aiResponse = aiResponseWithPlace(789L, 456L, 501L);
 
 		given(courseRepository.findById(456L)).willReturn(Optional.of(course));
 		given(recommendationJobRepository.save(org.mockito.ArgumentMatchers.any(RecommendationJob.class)))
 			.willReturn(savedJob);
+		given(courseParticipantRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseKeywordRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseMustVisitPlaceRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(userOnboardingProfileRepository.findAllById(List.of(1L))).willReturn(List.of());
+		given(userTourismPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFoodPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFacilityPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(recommendationAiClient.generate(org.mockito.ArgumentMatchers.any(AiRecommendationGenerateRequest.class)))
+			.willReturn(aiResponse);
+		given(recommendationCandidateRepository.save(org.mockito.ArgumentMatchers.any(RecommendationCandidate.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
+		given(placeRepository.findAllByPlaceIdIn(List.of(501L))).willReturn(List.of(place));
 
 		StartRecommendationResponse response = recommendationService.startGeneration(
 			1L,
@@ -102,8 +159,44 @@ class RecommendationServiceTest {
 
 		assertThat(response.generationId()).isEqualTo(789L);
 		assertThat(response.courseId()).isEqualTo(456L);
-		assertThat(response.status()).isEqualTo(RecommendationJobStatus.PENDING);
-		verify(recommendationJobRepository).save(org.mockito.ArgumentMatchers.any(RecommendationJob.class));
+		assertThat(response.status()).isEqualTo(RecommendationJobStatus.COMPLETED);
+		ArgumentCaptor<AiRecommendationGenerateRequest> requestCaptor =
+			ArgumentCaptor.forClass(AiRecommendationGenerateRequest.class);
+		verify(recommendationAiClient).generate(requestCaptor.capture());
+		assertThat(requestCaptor.getValue().generationId()).isEqualTo(789L);
+		assertThat(requestCaptor.getValue().courseId()).isEqualTo(456L);
+		assertThat(requestCaptor.getValue().participants()).hasSize(1);
+		verify(recommendationCandidateRepository).save(org.mockito.ArgumentMatchers.any(RecommendationCandidate.class));
+		verify(recommendationCandidateItemRepository).saveAll(org.mockito.ArgumentMatchers.anyList());
+	}
+
+	@Test
+	void startGeneration_fail_whenAiServerCallFails_marksJobFailed() {
+		Course course = courseWithId(456L);
+		RecommendationJob savedJob = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+
+		given(courseRepository.findById(456L)).willReturn(Optional.of(course));
+		given(recommendationJobRepository.save(org.mockito.ArgumentMatchers.any(RecommendationJob.class)))
+			.willReturn(savedJob);
+		given(courseParticipantRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseKeywordRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseMustVisitPlaceRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(userOnboardingProfileRepository.findAllById(List.of(1L))).willReturn(List.of());
+		given(userTourismPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFoodPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFacilityPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(recommendationAiClient.generate(org.mockito.ArgumentMatchers.any(AiRecommendationGenerateRequest.class)))
+			.willThrow(new RecommendationAiException("AI 서버 호출에 실패했습니다."));
+
+		StartRecommendationResponse response = recommendationService.startGeneration(
+			1L,
+			456L,
+			new StartRecommendationRequest(null, List.of(), null)
+		);
+
+		assertThat(response.status()).isEqualTo(RecommendationJobStatus.FAILED);
+		assertThat(savedJob.getErrorMessage()).isEqualTo("AI 서버 호출에 실패했습니다.");
 	}
 
 	@Test
@@ -346,6 +439,36 @@ class RecommendationServiceTest {
 		);
 		ReflectionTestUtils.setField(place, "placeId", placeId);
 		return place;
+	}
+
+	private AiRecommendationGenerateResponse aiResponseWithPlace(Long generationId, Long courseId, Long placeId) {
+		return new AiRecommendationGenerateResponse(
+			generationId,
+			courseId,
+			List.of(new AiRecommendationGenerateResponse.CandidateResponse(
+				1,
+				"부모님 편안함 우선 코스",
+				"이동 부담을 줄인 코스입니다.",
+				"필수 편의시설 조건을 우선 반영했습니다.",
+				new BigDecimal("92.0"),
+				150,
+				List.of(new AiRecommendationGenerateResponse.DayResponse(
+					1,
+					List.of(new AiRecommendationGenerateResponse.ItemResponse(
+						1,
+						"한밭수목원",
+						"TOUR",
+						"MOCK",
+						placeId,
+						"126508",
+						"대전광역시 서구 둔산대로 169",
+						70,
+						List.of("휴식 공간 필요")
+					))
+				)),
+				List.of()
+			))
+		);
 	}
 
 	private record UserFixture(com.withgahyo.domain.user.entity.User creator) {
