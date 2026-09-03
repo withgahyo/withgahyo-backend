@@ -177,11 +177,14 @@ OAuth 앱 키와 시크릿은 백엔드 환경변수로 관리합니다.
 | API-ONB-002 | `PUT` | `/api/v1/users/me/onboarding` | 필요 | 온보딩 정보 저장·수정 |
 | API-ONB-003 | `GET` | `/api/v1/onboarding/tourism-preferences` | 필요 | 관광 취향 선택지 조회 |
 | API-ONB-004 | `GET` | `/api/v1/onboarding/food-preferences` | 필요 | 식사 취향 선택지 조회 |
-| API-ONB-005 | `PATCH` | `/api/v1/users/me/onboarding/trip-duration` | 필요 | 여행 기간 저장 |
 | API-ONB-006 | `PATCH` | `/api/v1/users/me/onboarding/tourism-preferences` | 필요 | 관광 취향 저장 |
 | API-ONB-007 | `PATCH` | `/api/v1/users/me/onboarding/food-preferences` | 필요 | 식사 취향 저장 |
 | API-ONB-008 | `PATCH` | `/api/v1/users/me/onboarding/conditions` | 필요 | 여행 컨디션 저장 |
 | API-ONB-009 | `POST` | `/api/v1/users/me/onboarding/complete` | 필요 | 온보딩 완료 |
+
+- 여행 기간 Step이 프론트 온보딩 플로우에서 제거되어 `API-ONB-005`(`PATCH /api/v1/users/me/onboarding/trip-duration`)는 삭제했습니다. 번호는 재사용하지 않고 결번으로 둡니다.
+- `API-ONB-008`(컨디션 저장)과 `API-ONB-002`(온보딩 정보 저장·수정)의 컨디션 항목(`walkingTolerance`, `restPreference`, `stairsPreference`, `slopePreference`, `spicyPreference`)은 전부 선택 입력입니다.
+- `API-ONB-009`(온보딩 완료)의 필수 조건은 관광 취향 1개 이상, 식사 취향 1개 이상입니다. 컨디션 항목은 완료 조건에 포함되지 않습니다.
 
 ### FAM
 

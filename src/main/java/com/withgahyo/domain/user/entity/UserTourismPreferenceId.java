@@ -18,4 +18,9 @@ public class UserTourismPreferenceId implements Serializable {
 
 	@Column(name = "tourism_preference_id")
 	private Long tourismPreferenceId;
+
+	public UserTourismPreferenceId(Long userId, Long tourismPreferenceId) {
+		this.userId = userId;
+		this.tourismPreferenceId = tourismPreferenceId;
+	}
 }

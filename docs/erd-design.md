@@ -97,7 +97,7 @@ erDiagram
 
 - `users`: `provider`, `provider_user_id`, `nickname`, `profile_image_url`, `email`, `created_at`, `updated_at`, `deleted_at`
 - `refresh_token`: `user_id`, `token`, `expires_at`, `created_at`, `revoked_at`으로 서버 관리 Refresh Token 세션을 저장합니다.
-- `user_onboarding_profile`: `user_id`를 PK/FK로 사용하고, 여행 기간/보행/휴식/계단/경사/매운맛 선호와 `onboarding_completed`를 저장합니다.
+- `user_onboarding_profile`: `user_id`를 PK/FK로 사용하고, 보행/휴식/계단/경사/매운맛 선호(전부 선택 입력)와 `onboarding_completed`를 저장합니다. `trip_duration` 컬럼은 온보딩 여행 기간 Step 삭제로 더 이상 엔티티에서 매핑하지 않습니다(마이그레이션 도구가 없어 컬럼 자체는 DB에 남아있을 수 있습니다).
 - 사용자 선호는 `user_tourism_preference`, `user_food_preference`, `user_facility_preference`에서 각각 `(user_id, *_id)` 복합키로 관리합니다.
 - `family_relation`은 사용자 간 관계를 저장하며 `(user_id, family_user_id)`가 unique입니다.
 
