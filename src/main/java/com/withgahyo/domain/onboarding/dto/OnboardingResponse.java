@@ -4,7 +4,6 @@ import com.withgahyo.domain.user.entity.UserOnboardingProfile;
 import java.util.List;
 
 public record OnboardingResponse(
-	String tripDuration,
 	String walkingTolerance,
 	String restPreference,
 	String stairsPreference,
@@ -22,13 +21,12 @@ public record OnboardingResponse(
 	) {
 		if (profile == null) {
 			return new OnboardingResponse(
-				null, null, null, null, null, null,
+				null, null, null, null, null,
 				tourismPreferenceIds, foodPreferenceIds, false
 			);
 		}
 
 		return new OnboardingResponse(
-			profile.getTripDuration(),
 			profile.getWalkingTolerance(),
 			profile.getRestPreference(),
 			profile.getStairsPreference(),

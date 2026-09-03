@@ -30,9 +30,6 @@ public class UserOnboardingProfile {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
-	@Column(name = "trip_duration", length = 30)
-	private String tripDuration;
-
 	@Column(name = "walking_tolerance", length = 30)
 	private String walkingTolerance;
 
@@ -61,19 +58,15 @@ public class UserOnboardingProfile {
 	}
 
 	public static UserOnboardingProfile create(User user) {
+		// userId는 @MapsId를 통해 persist 시점에 user의 식별자에서 파생된다.
+		// 여기서 직접 세팅하면 Spring Data의 isNew() 판정이 어긋나 save()가 persist() 대신 merge()를 타므로 설정하지 않는다.
 		UserOnboardingProfile profile = new UserOnboardingProfile();
 		profile.user = user;
-		profile.userId = user.getUserId();
 		profile.onboardingCompleted = false;
 		return profile;
 	}
 
-	// TODO: 여행 기간 허용값이 확정되면 String 대신 enum 타입으로 전환
-	public void updateTripDuration(String tripDuration) {
-		this.tripDuration = tripDuration;
-	}
-
-	// TODO: 컨디션 항목별 허용값이 확정되면 String 대신 enum 타입으로 전환
+	// TODO: 컨디션 항목별 허용값이 확정되면 String 대신 enum 타입으로 전환. 현재는 프론트가 화면 label이 아닌 option id 문자열을 전송함
 	public void updateConditions(
 		String walkingTolerance,
 		String restPreference,
@@ -88,32 +81,7 @@ public class UserOnboardingProfile {
 		this.spicyPreference = spicyPreference;
 	}
 
-	public void updateProfile(
-		String tripDuration,
-		String walkingTolerance,
-		String restPreference,
-		String stairsPreference,
-		String slopePreference,
-		String spicyPreference
-	) {
-		updateTripDuration(tripDuration);
-		updateConditions(walkingTolerance, restPreference, stairsPreference, slopePreference, spicyPreference);
-	}
-
 	public void complete() {
 		this.onboardingCompleted = true;
-	}
-
-	public boolean isProfileFilled() {
-		return isNotBlank(tripDuration)
-			&& isNotBlank(walkingTolerance)
-			&& isNotBlank(restPreference)
-			&& isNotBlank(stairsPreference)
-			&& isNotBlank(slopePreference)
-			&& isNotBlank(spicyPreference);
-	}
-
-	private boolean isNotBlank(String value) {
-		return value != null && !value.isBlank();
 	}
 }

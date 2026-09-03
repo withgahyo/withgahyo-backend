@@ -41,6 +41,7 @@
 | 25 | `video_generation_job` | `VideoGenerationJob` | 영상 생성 작업 |
 | 26 | `review` | `Review` | 코스 리뷰 |
 | 27 | `review_highlight` | `ReviewHighlight` | 리뷰 하이라이트 |
+| 28 | `refresh_token` | `RefreshToken` | 인증 Refresh Token 세션 |
 
 ## Mermaid ERD
 
@@ -94,14 +95,15 @@ erDiagram
 
 ### 사용자/온보딩
 
-- `users`: `provider`, `provider_user_id`, `nickname`, `profile_image_url`, `created_at`, `updated_at`, `deleted_at`
-- `user_onboarding_profile`: `user_id`를 PK/FK로 사용하고, 여행 기간/보행/휴식/계단/경사/매운맛 선호와 `onboarding_completed`를 저장합니다.
+- `users`: `provider`, `provider_user_id`, `nickname`, `profile_image_url`, `email`, `created_at`, `updated_at`, `deleted_at`
+- `refresh_token`: `user_id`, `token`, `expires_at`, `created_at`, `revoked_at`으로 서버 관리 Refresh Token 세션을 저장합니다.
+- `user_onboarding_profile`: `user_id`를 PK/FK로 사용하고, 보행/휴식/계단/경사/매운맛 선호(전부 선택 입력)와 `onboarding_completed`를 저장합니다. `trip_duration` 컬럼은 온보딩 여행 기간 Step 삭제로 더 이상 엔티티에서 매핑하지 않습니다(마이그레이션 도구가 없어 컬럼 자체는 DB에 남아있을 수 있습니다).
 - 사용자 선호는 `user_tourism_preference`, `user_food_preference`, `user_facility_preference`에서 각각 `(user_id, *_id)` 복합키로 관리합니다.
 - `family_relation`은 사용자 간 관계를 저장하며 `(user_id, family_user_id)`가 unique입니다.
 
 ### 장소/접근성
 
-- `place`는 외부 관광 API 식별자인 `(content_id, content_type_id)` 조합이 unique입니다.
+- `place`는 외부 관광 API 식별자인 `(content_id, content_type_id)` 조합이 unique입니다. `content_type_id`는 각 외부 API가 부여한 실제 분류 코드(관광공사 `contenttypeid`, 카카오 `category_group_code`)를 저장하며, 데이터 출처 구분(`TOUR_API`/`KAKAO`)은 별도의 `source` 컬럼에 저장합니다.
 - `region_id`는 필수 FK입니다.
 - `place_accessibility`는 `(place_id, facility_id)` 복합키를 사용하고 `status`, `source`, `verified_at`, `updated_at`을 가집니다.
 
@@ -125,6 +127,7 @@ erDiagram
 | 테이블 | 제약 |
 | --- | --- |
 | `users` | `(provider, provider_user_id)` |
+| `refresh_token` | `token` |
 | `tourism_preference` | `code` |
 | `food_preference` | `code` |
 | `facility` | `code` |

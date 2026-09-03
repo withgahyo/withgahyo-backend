@@ -55,4 +55,25 @@ public class FamilyRelation {
 	void prePersist() {
 		this.createdAt = LocalDateTime.now();
 	}
+
+	public static FamilyRelation create(User user, User familyUser, String relationship) {
+		FamilyRelation familyRelation = new FamilyRelation();
+		familyRelation.user = user;
+		familyRelation.familyUser = familyUser;
+		familyRelation.relationship = relationship;
+		return familyRelation;
+	}
+
+	public boolean isActive() {
+		return deletedAt == null;
+	}
+
+	public void restore(String relationship) {
+		this.relationship = relationship;
+		this.deletedAt = null;
+	}
+
+	public void disconnect() {
+		this.deletedAt = LocalDateTime.now();
+	}
 }

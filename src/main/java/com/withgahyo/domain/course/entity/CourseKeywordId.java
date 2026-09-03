@@ -18,4 +18,9 @@ public class CourseKeywordId implements Serializable {
 
 	@Column(name = "keyword_id")
 	private Long keywordId;
+
+	public CourseKeywordId(Long courseId, Long keywordId) {
+		this.courseId = courseId;
+		this.keywordId = keywordId;
+	}
 }

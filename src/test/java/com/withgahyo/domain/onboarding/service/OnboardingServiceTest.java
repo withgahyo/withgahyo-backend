@@ -20,7 +20,6 @@ import com.withgahyo.domain.onboarding.dto.OnboardingResponse;
 import com.withgahyo.domain.onboarding.dto.OnboardingSaveRequest;
 import com.withgahyo.domain.onboarding.dto.TourismPreferenceOptionResponse;
 import com.withgahyo.domain.onboarding.dto.TourismPreferenceSaveRequest;
-import com.withgahyo.domain.onboarding.dto.TripDurationRequest;
 import com.withgahyo.domain.onboarding.exception.OnboardingErrorCode;
 import com.withgahyo.domain.user.entity.User;
 import com.withgahyo.domain.user.entity.UserOnboardingProfile;
@@ -29,12 +28,14 @@ import com.withgahyo.domain.user.repository.UserOnboardingProfileRepository;
 import com.withgahyo.domain.user.repository.UserRepository;
 import com.withgahyo.domain.user.repository.UserTourismPreferenceRepository;
 import com.withgahyo.global.exception.BusinessException;
+import jakarta.persistence.EntityManager;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -54,6 +55,8 @@ class OnboardingServiceTest {
 	private TourismPreferenceRepository tourismPreferenceRepository;
 	@Mock
 	private FoodPreferenceRepository foodPreferenceRepository;
+	@Mock
+	private EntityManager entityManager;
 
 	@InjectMocks
 	private OnboardingService onboardingService;
@@ -68,22 +71,10 @@ class OnboardingServiceTest {
 
 		OnboardingResponse response = onboardingService.getOnboarding(USER_ID);
 
-		assertThat(response.tripDuration()).isNull();
+		assertThat(response.walkingTolerance()).isNull();
 		assertThat(response.tourismPreferenceIds()).isEmpty();
 		assertThat(response.foodPreferenceIds()).isEmpty();
 		assertThat(response.onboardingCompleted()).isFalse();
-	}
-
-	@Test
-	void saveTripDuration_createsProfile_whenProfileNotExists() {
-		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.empty());
-		given(userRepository.getReferenceById(USER_ID)).willReturn(user());
-		given(userOnboardingProfileRepository.save(any(UserOnboardingProfile.class)))
-			.willAnswer(invocation -> invocation.getArgument(0));
-
-		onboardingService.saveTripDuration(USER_ID, new TripDurationRequest("2박3일"));
-
-		verify(userOnboardingProfileRepository).save(any(UserOnboardingProfile.class));
 	}
 
 	@Test
@@ -155,6 +146,33 @@ class OnboardingServiceTest {
 	}
 
 	@Test
+	void saveConditions_success_whenSlopePreferenceIsNull() {
+		UserOnboardingProfile profile = UserOnboardingProfile.create(user());
+		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.of(profile));
+
+		onboardingService.saveConditions(USER_ID, new ConditionsRequest(
+			"많이 걸어도 됨", "자주 쉼", "가능", null, "매운맛 선호"
+		));
+
+		assertThat(profile.getSlopePreference()).isNull();
+		assertThat(profile.getWalkingTolerance()).isEqualTo("많이 걸어도 됨");
+	}
+
+	@Test
+	void saveConditions_success_whenAllConditionsAreNull() {
+		UserOnboardingProfile profile = UserOnboardingProfile.create(user());
+		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.of(profile));
+
+		onboardingService.saveConditions(USER_ID, new ConditionsRequest(null, null, null, null, null));
+
+		assertThat(profile.getWalkingTolerance()).isNull();
+		assertThat(profile.getRestPreference()).isNull();
+		assertThat(profile.getStairsPreference()).isNull();
+		assertThat(profile.getSlopePreference()).isNull();
+		assertThat(profile.getSpicyPreference()).isNull();
+	}
+
+	@Test
 	void saveOnboarding_success_updatesProfileAndReplacesBothPreferences() {
 		UserOnboardingProfile profile = UserOnboardingProfile.create(user());
 		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.of(profile));
@@ -166,13 +184,12 @@ class OnboardingServiceTest {
 		given(userRepository.getReferenceById(USER_ID)).willReturn(user());
 
 		OnboardingSaveRequest request = new OnboardingSaveRequest(
-			"2박3일", "많이 걸어도 됨", "자주 쉼", "가능", "가능", "매운맛 선호",
+			"많이 걸어도 됨", "자주 쉼", "가능", "가능", "매운맛 선호",
 			List.of(10L), List.of(20L)
 		);
 
 		onboardingService.saveOnboarding(USER_ID, request);
 
-		assertThat(profile.getTripDuration()).isEqualTo("2박3일");
 		assertThat(profile.getWalkingTolerance()).isEqualTo("많이 걸어도 됨");
 		assertThat(profile.getRestPreference()).isEqualTo("자주 쉼");
 		assertThat(profile.getStairsPreference()).isEqualTo("가능");
@@ -183,6 +200,31 @@ class OnboardingServiceTest {
 		verify(userTourismPreferenceRepository).saveAll(anyList());
 		verify(userFoodPreferenceRepository).deleteAllById_UserId(USER_ID);
 		verify(userFoodPreferenceRepository).saveAll(anyList());
+	}
+
+	@Test
+	void saveOnboarding_success_whenAllConditionsAreNull() {
+		UserOnboardingProfile profile = UserOnboardingProfile.create(user());
+		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.of(profile));
+
+		TourismPreference tourismPreference = tourismPreference(10L);
+		FoodPreference foodPreference = foodPreference(20L);
+		given(tourismPreferenceRepository.findAllById(anyList())).willReturn(List.of(tourismPreference));
+		given(foodPreferenceRepository.findAllById(anyList())).willReturn(List.of(foodPreference));
+		given(userRepository.getReferenceById(USER_ID)).willReturn(user());
+
+		OnboardingSaveRequest request = new OnboardingSaveRequest(
+			null, null, null, null, null,
+			List.of(10L), List.of(20L)
+		);
+
+		onboardingService.saveOnboarding(USER_ID, request);
+
+		assertThat(profile.getWalkingTolerance()).isNull();
+		assertThat(profile.getRestPreference()).isNull();
+		assertThat(profile.getStairsPreference()).isNull();
+		assertThat(profile.getSlopePreference()).isNull();
+		assertThat(profile.getSpicyPreference()).isNull();
 	}
 
 	@Test
@@ -228,21 +270,9 @@ class OnboardingServiceTest {
 	}
 
 	@Test
-	void completeOnboarding_throwsException_whenProfileNotExists() {
+	void completeOnboarding_throwsException_whenTourismPreferenceMissing() {
 		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.empty());
-
-		assertThatThrownBy(() -> onboardingService.completeOnboarding(USER_ID))
-			.isInstanceOf(BusinessException.class)
-			.satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
-				.isEqualTo(OnboardingErrorCode.INCOMPLETE_ONBOARDING));
-	}
-
-	@Test
-	void completeOnboarding_throwsException_whenRequiredFieldIsMissing() {
-		UserOnboardingProfile profile = UserOnboardingProfile.create(user());
-		profile.updateTripDuration("2박3일");
-		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.of(profile));
-		given(userTourismPreferenceRepository.existsById_UserId(USER_ID)).willReturn(true);
+		given(userTourismPreferenceRepository.existsById_UserId(USER_ID)).willReturn(false);
 		given(userFoodPreferenceRepository.existsById_UserId(USER_ID)).willReturn(true);
 
 		assertThatThrownBy(() -> onboardingService.completeOnboarding(USER_ID))
@@ -252,8 +282,21 @@ class OnboardingServiceTest {
 	}
 
 	@Test
-	void completeOnboarding_completes_whenAllRequiredFieldsArePresent() {
-		UserOnboardingProfile profile = filledProfile();
+	void completeOnboarding_throwsException_whenFoodPreferenceMissing() {
+		UserOnboardingProfile profile = UserOnboardingProfile.create(user());
+		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.of(profile));
+		given(userTourismPreferenceRepository.existsById_UserId(USER_ID)).willReturn(true);
+		given(userFoodPreferenceRepository.existsById_UserId(USER_ID)).willReturn(false);
+
+		assertThatThrownBy(() -> onboardingService.completeOnboarding(USER_ID))
+			.isInstanceOf(BusinessException.class)
+			.satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+				.isEqualTo(OnboardingErrorCode.INCOMPLETE_ONBOARDING));
+	}
+
+	@Test
+	void completeOnboarding_completes_whenTourismAndFoodPreferencesArePresent_regardlessOfConditions() {
+		UserOnboardingProfile profile = UserOnboardingProfile.create(user());
 		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.of(profile));
 		given(userTourismPreferenceRepository.existsById_UserId(USER_ID)).willReturn(true);
 		given(userFoodPreferenceRepository.existsById_UserId(USER_ID)).willReturn(true);
@@ -261,6 +304,22 @@ class OnboardingServiceTest {
 		onboardingService.completeOnboarding(USER_ID);
 
 		assertThat(profile.isOnboardingCompleted()).isTrue();
+	}
+
+	@Test
+	void completeOnboarding_createsProfile_whenProfileNotExists_butPreferencesArePresent() {
+		given(userOnboardingProfileRepository.findById(USER_ID)).willReturn(Optional.empty());
+		given(userTourismPreferenceRepository.existsById_UserId(USER_ID)).willReturn(true);
+		given(userFoodPreferenceRepository.existsById_UserId(USER_ID)).willReturn(true);
+		given(userRepository.getReferenceById(USER_ID)).willReturn(user());
+
+		onboardingService.completeOnboarding(USER_ID);
+
+		// 신규 프로필은 repository.save()가 아니라 EntityManager.persist()로 생성되어야 한다.
+		ArgumentCaptor<UserOnboardingProfile> captor = ArgumentCaptor.forClass(UserOnboardingProfile.class);
+		verify(entityManager).persist(captor.capture());
+		verify(userOnboardingProfileRepository, never()).save(any(UserOnboardingProfile.class));
+		assertThat(captor.getValue().isOnboardingCompleted()).isTrue();
 	}
 
 	@Test
@@ -277,7 +336,7 @@ class OnboardingServiceTest {
 
 	private UserOnboardingProfile filledProfile() {
 		UserOnboardingProfile profile = UserOnboardingProfile.create(user());
-		profile.updateProfile("2박3일", "많이 걸어도 됨", "자주 쉼", "가능", "가능", "매운맛 선호");
+		profile.updateConditions("많이 걸어도 됨", "자주 쉼", "가능", "가능", "매운맛 선호");
 		return profile;
 	}
 

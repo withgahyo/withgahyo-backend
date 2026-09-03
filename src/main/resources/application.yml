@@ -18,3 +18,29 @@ springdoc:
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000}
+
+auth:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-expires-in: ${JWT_ACCESS_TOKEN_EXPIRES_IN:3600}
+    refresh-token-expires-in: ${JWT_REFRESH_TOKEN_EXPIRES_IN:1209600}
+  oauth:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+      token-uri: ${KAKAO_TOKEN_URI:https://kauth.kakao.com/oauth/token}
+      user-info-uri: ${KAKAO_USER_INFO_URI:https://kapi.kakao.com/v2/user/me}
+    google:
+      client-id: ${GOOGLE_CLIENT_ID}
+      client-secret: ${GOOGLE_CLIENT_SECRET}
+      token-uri: ${GOOGLE_TOKEN_URI:https://oauth2.googleapis.com/token}
+      user-info-uri: ${GOOGLE_USER_INFO_URI:https://www.googleapis.com/oauth2/v3/userinfo}
+
+external:
+  tour-api:
+    base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr/B551011/KorService2}
+    service-key: ${TOUR_API_SERVICE_KEY:}
+    mobile-app: ${TOUR_API_MOBILE_APP:withgahyo}
+  kakao:
+    local-api-base-url: ${KAKAO_LOCAL_API_BASE_URL:https://dapi.kakao.com}
+    rest-api-key: ${KAKAO_REST_API_KEY:${KAKAO_CLIENT_ID:}}

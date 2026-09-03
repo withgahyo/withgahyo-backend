@@ -8,17 +8,27 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+	public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+	}
 
 	private static final String[] PUBLIC_ENDPOINTS = {
 		"/",
 		"/error",
 		"/api-docs/**",
 		"/swagger-ui/**",
-		"/swagger-ui.html"
+		"/swagger-ui.html",
+		"/api/v1/auth/login/kakao",
+		"/api/v1/auth/login/google",
+		"/api/v1/auth/token/refresh"
 	};
 
 	@Bean
@@ -32,6 +42,7 @@ public class SecurityConfig {
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(PUBLIC_ENDPOINTS).permitAll()
 				.anyRequest().authenticated())
+			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 			.build();
 	}
 }

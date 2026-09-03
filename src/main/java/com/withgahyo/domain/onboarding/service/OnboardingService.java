@@ -11,7 +11,6 @@ import com.withgahyo.domain.onboarding.dto.OnboardingResponse;
 import com.withgahyo.domain.onboarding.dto.OnboardingSaveRequest;
 import com.withgahyo.domain.onboarding.dto.TourismPreferenceOptionResponse;
 import com.withgahyo.domain.onboarding.dto.TourismPreferenceSaveRequest;
-import com.withgahyo.domain.onboarding.dto.TripDurationRequest;
 import com.withgahyo.domain.onboarding.exception.OnboardingErrorCode;
 import com.withgahyo.domain.user.entity.User;
 import com.withgahyo.domain.user.entity.UserFoodPreference;
@@ -22,6 +21,7 @@ import com.withgahyo.domain.user.repository.UserOnboardingProfileRepository;
 import com.withgahyo.domain.user.repository.UserRepository;
 import com.withgahyo.domain.user.repository.UserTourismPreferenceRepository;
 import com.withgahyo.global.exception.BusinessException;
+import jakarta.persistence.EntityManager;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,6 +40,7 @@ public class OnboardingService {
 	private final UserFoodPreferenceRepository userFoodPreferenceRepository;
 	private final TourismPreferenceRepository tourismPreferenceRepository;
 	private final FoodPreferenceRepository foodPreferenceRepository;
+	private final EntityManager entityManager;
 
 	public OnboardingResponse getOnboarding(Long userId) {
 		UserOnboardingProfile profile = userOnboardingProfileRepository.findById(userId).orElse(null);
@@ -51,8 +52,7 @@ public class OnboardingService {
 	@Transactional
 	public void saveOnboarding(Long userId, OnboardingSaveRequest request) {
 		UserOnboardingProfile profile = getOrCreateProfile(userId);
-		profile.updateProfile(
-			request.tripDuration(),
+		profile.updateConditions(
 			request.walkingTolerance(),
 			request.restPreference(),
 			request.stairsPreference(),
@@ -73,12 +73,6 @@ public class OnboardingService {
 		return foodPreferenceRepository.findAllByActiveTrueOrderByFoodPreferenceIdAsc().stream()
 			.map(FoodPreferenceOptionResponse::from)
 			.toList();
-	}
-
-	@Transactional
-	public void saveTripDuration(Long userId, TripDurationRequest request) {
-		UserOnboardingProfile profile = getOrCreateProfile(userId);
-		profile.updateTripDuration(request.tripDuration());
 	}
 
 	@Transactional
@@ -103,6 +97,8 @@ public class OnboardingService {
 		);
 	}
 
+	// 완료 조건: 관광 취향 1개 이상 + 식사 취향 1개 이상. 컨디션(여행 기간 포함하지 않음)은
+	// 개인화 추천을 위한 선택 정보이므로 온보딩 완료 자체를 막지 않는다.
 	@Transactional
 	public void completeOnboarding(Long userId) {
 		UserOnboardingProfile profile = userOnboardingProfileRepository.findById(userId).orElse(null);
@@ -112,11 +108,12 @@ public class OnboardingService {
 
 		boolean hasTourismPreference = userTourismPreferenceRepository.existsById_UserId(userId);
 		boolean hasFoodPreference = userFoodPreferenceRepository.existsById_UserId(userId);
-		if (profile == null || !profile.isProfileFilled() || !hasTourismPreference || !hasFoodPreference) {
+		if (!hasTourismPreference || !hasFoodPreference) {
 			throw new BusinessException(OnboardingErrorCode.INCOMPLETE_ONBOARDING);
 		}
 
-		profile.complete();
+		UserOnboardingProfile targetProfile = profile != null ? profile : getOrCreateProfile(userId);
+		targetProfile.complete();
 	}
 
 	private List<Long> findTourismPreferenceIds(Long userId) {
@@ -134,8 +131,12 @@ public class OnboardingService {
 	private UserOnboardingProfile getOrCreateProfile(Long userId) {
 		return userOnboardingProfileRepository.findById(userId)
 			.orElseGet(() -> {
+				// 신규 프로필은 @MapsId 공유 PK 엔티티라, save()가 merge()를 타면
+				// null identifier AssertionFailure가 발생한다. persist()로 신규 생성 경로를 명시한다.
 				User user = userRepository.getReferenceById(userId);
-				return userOnboardingProfileRepository.save(UserOnboardingProfile.create(user));
+				UserOnboardingProfile profile = UserOnboardingProfile.create(user);
+				entityManager.persist(profile);
+				return profile;
 			});
 	}
 

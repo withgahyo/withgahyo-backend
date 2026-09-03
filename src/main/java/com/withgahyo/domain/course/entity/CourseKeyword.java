@@ -29,4 +29,12 @@ public class CourseKeyword {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "keyword_id", nullable = false)
 	private CourseInterestKeyword keyword;
+
+	public static CourseKeyword create(Course course, CourseInterestKeyword keyword) {
+		CourseKeyword courseKeyword = new CourseKeyword();
+		courseKeyword.id = new CourseKeywordId(course.getCourseId(), keyword.getKeywordId());
+		courseKeyword.course = course;
+		courseKeyword.keyword = keyword;
+		return courseKeyword;
+	}
 }
