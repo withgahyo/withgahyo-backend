@@ -34,6 +34,7 @@ import com.withgahyo.domain.recommendation.exception.RecommendationErrorCode;
 import com.withgahyo.domain.recommendation.repository.RecommendationCandidateItemRepository;
 import com.withgahyo.domain.recommendation.repository.RecommendationCandidateRepository;
 import com.withgahyo.domain.recommendation.repository.RecommendationJobRepository;
+import com.withgahyo.domain.user.entity.UserOnboardingProfile;
 import com.withgahyo.domain.user.repository.UserFacilityPreferenceRepository;
 import com.withgahyo.domain.user.repository.UserFoodPreferenceRepository;
 import com.withgahyo.domain.user.repository.UserOnboardingProfileRepository;
@@ -168,6 +169,40 @@ class RecommendationServiceTest {
 		assertThat(requestCaptor.getValue().participants()).hasSize(1);
 		verify(recommendationCandidateRepository).save(org.mockito.ArgumentMatchers.any(RecommendationCandidate.class));
 		verify(recommendationCandidateItemRepository).saveAll(org.mockito.ArgumentMatchers.anyList());
+	}
+
+	@Test
+	void startGeneration_success_sendsEmptyDietaryRestrictionCodes_regardlessOfSpicyPreference() {
+		Course course = courseWithId(456L);
+		RecommendationJob savedJob = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+		Place place = placeWithId(501L);
+		AiRecommendationGenerateResponse aiResponse = aiResponseWithPlace(789L, 456L, 501L);
+		UserOnboardingProfile profile = UserOnboardingProfile.create(course.getCreatorUser());
+		profile.updateConditions(null, null, null, null, "avoid");
+
+		given(courseRepository.findById(456L)).willReturn(Optional.of(course));
+		given(recommendationJobRepository.save(org.mockito.ArgumentMatchers.any(RecommendationJob.class)))
+			.willReturn(savedJob);
+		given(courseParticipantRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseKeywordRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseMustVisitPlaceRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(userOnboardingProfileRepository.findAllById(List.of(1L))).willReturn(List.of(profile));
+		given(userTourismPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFoodPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFacilityPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(recommendationAiClient.generate(org.mockito.ArgumentMatchers.any(AiRecommendationGenerateRequest.class)))
+			.willReturn(aiResponse);
+		given(recommendationCandidateRepository.save(org.mockito.ArgumentMatchers.any(RecommendationCandidate.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
+		given(placeRepository.findAllByPlaceIdIn(List.of(501L))).willReturn(List.of(place));
+
+		recommendationService.startGeneration(1L, 456L, new StartRecommendationRequest(null, List.of(), null));
+
+		ArgumentCaptor<AiRecommendationGenerateRequest> requestCaptor =
+			ArgumentCaptor.forClass(AiRecommendationGenerateRequest.class);
+		verify(recommendationAiClient).generate(requestCaptor.capture());
+		assertThat(requestCaptor.getValue().participants().get(0).condition().dietaryRestrictionCodes()).isEmpty();
 	}
 
 	@Test

@@ -1,5 +1,7 @@
 package com.withgahyo.domain.place.controller;
 
+import com.withgahyo.domain.place.dto.InternalPlaceBatchGetRequest;
+import com.withgahyo.domain.place.dto.InternalPlaceBatchGetResponse;
 import com.withgahyo.domain.place.dto.InternalPlaceUpsertRequest;
 import com.withgahyo.domain.place.dto.InternalPlaceUpsertResponse;
 import com.withgahyo.domain.place.service.PlaceInternalService;
@@ -39,6 +41,15 @@ public class PlaceInternalController {
 	) {
 		validateInternalApiKey(internalApiKey);
 		return ApiResponse.success(placeInternalService.upsertPlaces(request));
+	}
+
+	@PostMapping("/places/batch-get")
+	public ApiResponse<InternalPlaceBatchGetResponse> batchGetPlaces(
+		@RequestHeader(value = INTERNAL_API_KEY_HEADER, required = false) String internalApiKey,
+		@RequestBody @Valid InternalPlaceBatchGetRequest request
+	) {
+		validateInternalApiKey(internalApiKey);
+		return ApiResponse.success(placeInternalService.batchGetPlaces(request));
 	}
 
 	private void validateInternalApiKey(String requestInternalApiKey) {

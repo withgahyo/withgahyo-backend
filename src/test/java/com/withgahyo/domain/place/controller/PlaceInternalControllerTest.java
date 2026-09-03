@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import com.withgahyo.domain.place.dto.InternalPlaceBatchGetRequest;
+import com.withgahyo.domain.place.dto.InternalPlaceBatchGetResponse;
 import com.withgahyo.domain.place.dto.InternalPlaceUpsertRequest;
 import com.withgahyo.domain.place.dto.InternalPlaceUpsertResponse;
 import com.withgahyo.domain.place.service.PlaceInternalService;
@@ -61,6 +63,34 @@ class PlaceInternalControllerTest {
 		InternalPlaceUpsertRequest request = request();
 
 		assertThatThrownBy(() -> blankKeyController.upsertPlaces("", request))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException) exception).getErrorCode())
+			.isEqualTo(SecurityErrorCode.FORBIDDEN);
+	}
+
+	@Test
+	void batchGetPlaces_success_returnsBatchGetResponse() {
+		InternalPlaceBatchGetRequest request = new InternalPlaceBatchGetRequest(List.of(1L, 2L));
+		InternalPlaceBatchGetResponse serviceResponse = new InternalPlaceBatchGetResponse(
+			List.of(new InternalPlaceBatchGetResponse.PlaceResponse(
+				1L, "한밭수목원", new BigDecimal("36.366"), new BigDecimal("127.388"),
+				"TOUR_API", "126508", "12", "대전광역시 서구 둔산대로 169", "3", "1"
+			)),
+			List.of(2L)
+		);
+		given(placeInternalService.batchGetPlaces(request)).willReturn(serviceResponse);
+
+		var response = placeInternalController.batchGetPlaces("test-internal-key", request);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(placeInternalService).batchGetPlaces(request);
+	}
+
+	@Test
+	void batchGetPlaces_fail_whenInternalApiKeyMismatch() {
+		InternalPlaceBatchGetRequest request = new InternalPlaceBatchGetRequest(List.of(1L));
+
+		assertThatThrownBy(() -> placeInternalController.batchGetPlaces("wrong-key", request))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException) exception).getErrorCode())
 			.isEqualTo(SecurityErrorCode.FORBIDDEN);

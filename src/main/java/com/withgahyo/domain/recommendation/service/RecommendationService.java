@@ -329,17 +329,11 @@ public class RecommendationService {
 		return "LOW";
 	}
 
+	// dietaryRestrictionCodes는 foodPreferenceCodes와 별개인 "식이 제한/주의사항" 개념으로 유지하되,
+	// 현재 백엔드/AI 서버 양쪽 다 공식 코드셋이 없어 빈 배열로만 전달한다.
+	// spicyPreference로 NO_SPICY/LOW_SPICY를 임의 생성하던 이전 로직은 합의되지 않은 코드라 제거했다.
+	// TODO: 식이 제한 기능이 확정되면 전용 마스터/코드셋을 설계하고 이 메서드에서 매핑한다.
 	private List<String> toDietaryRestrictionCodes(UserOnboardingProfile profile) {
-		if (profile == null || profile.getSpicyPreference() == null) {
-			return List.of();
-		}
-		String spicyPreference = profile.getSpicyPreference().toLowerCase();
-		if (spicyPreference.contains("avoid")) {
-			return List.of("NO_SPICY");
-		}
-		if (spicyPreference.contains("little")) {
-			return List.of("LOW_SPICY");
-		}
 		return List.of();
 	}
 
