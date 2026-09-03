@@ -9,6 +9,12 @@ import org.springframework.data.repository.query.Param;
 
 public interface UserFoodPreferenceRepository extends JpaRepository<UserFoodPreference, UserFoodPreferenceId> {
 
+	List<UserFoodPreference> findAllById_UserId(Long userId);
+
+	boolean existsById_UserId(Long userId);
+
+	void deleteAllById_UserId(Long userId);
+
 	@Query("""
 		select ufp.foodPreference.code
 		from UserFoodPreference ufp

@@ -18,4 +18,9 @@ public class UserFoodPreferenceId implements Serializable {
 
 	@Column(name = "food_preference_id")
 	private Long foodPreferenceId;
+
+	public UserFoodPreferenceId(Long userId, Long foodPreferenceId) {
+		this.userId = userId;
+		this.foodPreferenceId = foodPreferenceId;
+	}
 }

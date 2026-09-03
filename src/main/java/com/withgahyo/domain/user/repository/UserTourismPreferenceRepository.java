@@ -9,6 +9,12 @@ import org.springframework.data.repository.query.Param;
 
 public interface UserTourismPreferenceRepository extends JpaRepository<UserTourismPreference, UserTourismPreferenceId> {
 
+	List<UserTourismPreference> findAllById_UserId(Long userId);
+
+	boolean existsById_UserId(Long userId);
+
+	void deleteAllById_UserId(Long userId);
+
 	@Query("""
 		select utp.tourismPreference.code
 		from UserTourismPreference utp

@@ -21,6 +21,10 @@ logging:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
 
+internal:
+  ai:
+    api-key: ${INTERNAL_AI_API_KEY:test-internal-ai-key}
+
 auth:
   jwt:
     secret: ${JWT_SECRET:test-secret-for-auth-tests-minimum-32-bytes-long}

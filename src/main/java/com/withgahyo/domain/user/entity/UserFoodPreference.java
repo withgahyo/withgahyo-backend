@@ -30,4 +30,12 @@ public class UserFoodPreference {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "food_preference_id", nullable = false)
 	private FoodPreference foodPreference;
+
+	public static UserFoodPreference create(User user, FoodPreference foodPreference) {
+		UserFoodPreference preference = new UserFoodPreference();
+		preference.id = new UserFoodPreferenceId(user.getUserId(), foodPreference.getFoodPreferenceId());
+		preference.user = user;
+		preference.foodPreference = foodPreference;
+		return preference;
+	}
 }

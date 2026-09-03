@@ -177,11 +177,14 @@ OAuth 앱 키와 시크릿은 백엔드 환경변수로 관리합니다.
 | API-ONB-002 | `PUT` | `/api/v1/users/me/onboarding` | 필요 | 온보딩 정보 저장·수정 |
 | API-ONB-003 | `GET` | `/api/v1/onboarding/tourism-preferences` | 필요 | 관광 취향 선택지 조회 |
 | API-ONB-004 | `GET` | `/api/v1/onboarding/food-preferences` | 필요 | 식사 취향 선택지 조회 |
-| API-ONB-005 | `PATCH` | `/api/v1/users/me/onboarding/trip-duration` | 필요 | 여행 기간 저장 |
 | API-ONB-006 | `PATCH` | `/api/v1/users/me/onboarding/tourism-preferences` | 필요 | 관광 취향 저장 |
 | API-ONB-007 | `PATCH` | `/api/v1/users/me/onboarding/food-preferences` | 필요 | 식사 취향 저장 |
 | API-ONB-008 | `PATCH` | `/api/v1/users/me/onboarding/conditions` | 필요 | 여행 컨디션 저장 |
 | API-ONB-009 | `POST` | `/api/v1/users/me/onboarding/complete` | 필요 | 온보딩 완료 |
+
+- 여행 기간 Step이 프론트 온보딩 플로우에서 제거되어 `API-ONB-005`(`PATCH /api/v1/users/me/onboarding/trip-duration`)는 삭제했습니다. 번호는 재사용하지 않고 결번으로 둡니다.
+- `API-ONB-008`(컨디션 저장)과 `API-ONB-002`(온보딩 정보 저장·수정)의 컨디션 항목(`walkingTolerance`, `restPreference`, `stairsPreference`, `slopePreference`, `spicyPreference`)은 전부 선택 입력입니다.
+- `API-ONB-009`(온보딩 완료)의 필수 조건은 관광 취향 1개 이상, 식사 취향 1개 이상입니다. 컨디션 항목은 완료 조건에 포함되지 않습니다.
 
 ### FAM
 
@@ -300,6 +303,64 @@ Response:
 | API-REC-004 | `GET` | `/api/v1/course-generations/{generationId}/candidates/{candidateId}` | 필요 | AI 추천 후보 상세 조회 |
 | API-REC-005 | `POST` | `/api/v1/course-generations/{generationId}/selection` | 필요 | AI 추천 후보 확정 |
 
+### INTERNAL
+
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-INT-001 | `POST` | `/api/v1/internal/places/upsert` | 내부 키 | AI 서버 장소 upsert |
+
+#### AI 서버 장소 upsert 정책
+
+`POST /api/v1/internal/places/upsert`
+
+AI 서버가 한국관광공사, 카카오 등 외부 API로 조회한 장소를 백엔드 `place` 리소스로 저장하거나 갱신할 때 사용하는 내부 API입니다. 이 API는 프런트엔드 사용자 JWT가 아니라 서버 간 통신용 `X-Internal-Api-Key` 헤더로 보호합니다. 실제 키는 `INTERNAL_AI_API_KEY` 환경변수로 관리합니다.
+
+Request Headers:
+
+| 이름 | 필수 | 설명 |
+| --- | --- | --- |
+| `X-Internal-Api-Key` | 예 | AI 서버와 백엔드가 공유하는 내부 API 키입니다. |
+
+Request:
+
+```json
+{
+  "places": [
+    {
+      "source": "TOUR_API",
+      "contentId": "126508",
+      "contentTypeId": "12",
+      "category": "NATURE",
+      "areaCode": "3",
+      "sigunguCode": "1",
+      "name": "한밭수목원",
+      "address": "대전광역시 서구 둔산대로 169",
+      "latitude": 36.366,
+      "longitude": 127.388,
+      "imageUrl": "https://example.com/place.jpg"
+    }
+  ]
+}
+```
+
+Response:
+
+```json
+{
+  "places": [
+    {
+      "placeId": 501,
+      "source": "TOUR_API",
+      "contentId": "126508",
+      "contentTypeId": "12",
+      "name": "한밭수목원"
+    }
+  ]
+}
+```
+
+기존 장소는 `contentId`, `contentTypeId` 기준으로 찾아 외부 정보를 갱신하고, 없는 장소는 새로 저장합니다. `areaCode`, `sigunguCode`에 해당하는 지역이 없으면 `PLACE_404_001`로 실패합니다.
+
 ### EXP
 
 | API ID | Method | Path | 인증 | 설명 |
@@ -354,6 +415,7 @@ Response:
 | HOME | `domain.home` |
 | CRS | `domain.course`, `domain.place`, `domain.family` |
 | REC | `domain.recommendation`, `infra.ai` |
+| INTERNAL | `domain.place` |
 | EXP | `domain.course` |
 | ALB | `domain.album`, `domain.video` |
 | REV | `domain.review` |

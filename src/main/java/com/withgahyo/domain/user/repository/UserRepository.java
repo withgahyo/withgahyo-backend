@@ -9,15 +9,15 @@ import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-	Optional<User> findByProviderAndProviderUserId(String provider, String providerUserId);
+    Optional<User> findByProviderAndProviderUserId(String provider, String providerUserId);
 
-	@Query("""
-		select u
-		from User u
-		where lower(u.email) = lower(:email)
-			and u.deletedAt is null
-		""")
-	List<User> findActiveUsersByEmail(@Param("email") String email);
+    @Query("""
+       select u
+       from User u
+       where lower(u.email) = lower(:email)
+          and u.deletedAt is null
+       """)
+    List<User> findActiveUsersByEmail(@Param("email") String email);
 
-	boolean existsByUserIdAndDeletedAtIsNull(Long userId);
+    boolean existsByUserIdAndDeletedAtIsNull(Long userId);
 }
