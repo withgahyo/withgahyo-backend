@@ -33,8 +33,15 @@ public record AiRecommendationGenerateResponse(
 		String category,
 		String source,
 		Long placeId,
+		String externalPlaceId,
 		String contentId,
+		String contentTypeId,
 		String address,
+		String areaCode,
+		String sigunguCode,
+		BigDecimal latitude,
+		BigDecimal longitude,
+		String imageUrl,
 		Integer estimatedStayMinutes,
 		List<String> accessibilityNotes
 	) {
