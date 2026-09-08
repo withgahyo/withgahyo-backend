@@ -29,7 +29,8 @@ public class SecurityConfig {
 		"/api/v1/auth/login/kakao",
 		"/api/v1/auth/login/google",
 		"/api/v1/auth/token/refresh",
-		"/api/v1/internal/places/upsert"
+		"/api/v1/internal/places/upsert",
+		"/api/v1/internal/places/batch-get"
 	};
 
 	@Bean

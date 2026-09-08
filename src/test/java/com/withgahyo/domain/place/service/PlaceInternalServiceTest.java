@@ -2,7 +2,10 @@ package com.withgahyo.domain.place.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
+import com.withgahyo.domain.place.dto.InternalPlaceBatchGetRequest;
+import com.withgahyo.domain.place.dto.InternalPlaceBatchGetResponse;
 import com.withgahyo.domain.place.dto.InternalPlaceUpsertRequest;
 import com.withgahyo.domain.place.dto.InternalPlaceUpsertResponse;
 import com.withgahyo.domain.place.entity.Place;
@@ -33,7 +36,7 @@ class PlaceInternalServiceTest {
 	@BeforeEach
 	void setUp() {
 		PlaceUpsertWriter placeUpsertWriter = new PlaceUpsertWriter(regionRepository, placeRepository);
-		placeInternalService = new PlaceInternalService(placeUpsertWriter);
+		placeInternalService = new PlaceInternalService(placeUpsertWriter, placeRepository);
 	}
 
 	@Test
@@ -72,5 +75,77 @@ class PlaceInternalServiceTest {
 		assertThat(response.places().get(0).contentId()).isEqualTo("126508");
 		assertThat(response.places().get(0).contentTypeId()).isEqualTo("12");
 		assertThat(response.places().get(0).name()).isEqualTo("한밭수목원");
+	}
+
+	@Test
+	void batchGetPlaces_success_returnsAllRequestedPlaces() {
+		Place place1 = placeWithId(1L);
+		Place place2 = placeWithId(2L);
+		given(placeRepository.findAllByPlaceIdIn(List.of(1L, 2L))).willReturn(List.of(place1, place2));
+
+		InternalPlaceBatchGetResponse response = placeInternalService.batchGetPlaces(
+			new InternalPlaceBatchGetRequest(List.of(1L, 2L))
+		);
+
+		assertThat(response.places()).hasSize(2);
+		assertThat(response.missingPlaceIds()).isEmpty();
+	}
+
+	@Test
+	void batchGetPlaces_success_returnsMissingPlaceIds_whenSomeIdsNotFound() {
+		Place place1 = placeWithId(1L);
+		given(placeRepository.findAllByPlaceIdIn(List.of(1L, 2L))).willReturn(List.of(place1));
+
+		InternalPlaceBatchGetResponse response = placeInternalService.batchGetPlaces(
+			new InternalPlaceBatchGetRequest(List.of(1L, 2L))
+		);
+
+		assertThat(response.places()).hasSize(1);
+		assertThat(response.places().get(0).placeId()).isEqualTo(1L);
+		assertThat(response.missingPlaceIds()).containsExactly(2L);
+	}
+
+	@Test
+	void batchGetPlaces_success_returnsAllMissing_whenNoIdsFound() {
+		given(placeRepository.findAllByPlaceIdIn(List.of(1L, 2L))).willReturn(List.of());
+
+		InternalPlaceBatchGetResponse response = placeInternalService.batchGetPlaces(
+			new InternalPlaceBatchGetRequest(List.of(1L, 2L))
+		);
+
+		assertThat(response.places()).isEmpty();
+		assertThat(response.missingPlaceIds()).containsExactly(1L, 2L);
+	}
+
+	@Test
+	void batchGetPlaces_removesDuplicateIds_beforeQuerying() {
+		Place place1 = placeWithId(1L);
+		given(placeRepository.findAllByPlaceIdIn(List.of(1L))).willReturn(List.of(place1));
+
+		InternalPlaceBatchGetResponse response = placeInternalService.batchGetPlaces(
+			new InternalPlaceBatchGetRequest(List.of(1L, 1L, 1L))
+		);
+
+		assertThat(response.places()).hasSize(1);
+		assertThat(response.missingPlaceIds()).isEmpty();
+		verify(placeRepository).findAllByPlaceIdIn(List.of(1L));
+	}
+
+	private Place placeWithId(Long placeId) {
+		Region region = Region.create("3", "1", "대전광역시 동구");
+		Place place = Place.create(
+			"126508",
+			"12",
+			"TOUR_API",
+			"NATURE",
+			region,
+			"한밭수목원",
+			"대전광역시 서구 둔산대로 169",
+			new BigDecimal("36.366"),
+			new BigDecimal("127.388"),
+			"https://example.com/place.jpg"
+		);
+		ReflectionTestUtils.setField(place, "placeId", placeId);
+		return place;
 	}
 }

@@ -243,9 +243,11 @@ public class CourseService {
 			placeRepository::findAllByPlaceIdIn,
 			CourseErrorCode.PLACE_NOT_FOUND
 		);
-		return places.stream()
-			.filter(place -> isInRegion(region, place))
-			.toList();
+		// 필수 방문 장소는 절대 조용히 제외하지 않는다. 하나라도 여행 지역과 다르면 요청 전체를 실패시킨다.
+		if (places.stream().anyMatch(place -> !isInRegion(region, place))) {
+			throw new BusinessException(CourseErrorCode.MUST_VISIT_PLACE_REGION_MISMATCH);
+		}
+		return places;
 	}
 
 	private <T> List<T> findAndValidate(

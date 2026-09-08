@@ -2,7 +2,10 @@ package com.withgahyo.domain.recommendation.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.withgahyo.domain.album.entity.Album;
@@ -19,6 +22,8 @@ import com.withgahyo.domain.course.repository.CourseScheduleItemRepository;
 import com.withgahyo.domain.place.entity.Place;
 import com.withgahyo.domain.place.entity.Region;
 import com.withgahyo.domain.place.repository.PlaceRepository;
+import com.withgahyo.domain.place.service.ExternalPlaceSearchResult;
+import com.withgahyo.domain.place.service.PlaceUpsertWriter;
 import com.withgahyo.domain.recommendation.dto.RecommendationCandidateDetailResponse;
 import com.withgahyo.domain.recommendation.dto.RecommendationCandidatesResponse;
 import com.withgahyo.domain.recommendation.dto.RecommendationStatusResponse;
@@ -34,6 +39,7 @@ import com.withgahyo.domain.recommendation.exception.RecommendationErrorCode;
 import com.withgahyo.domain.recommendation.repository.RecommendationCandidateItemRepository;
 import com.withgahyo.domain.recommendation.repository.RecommendationCandidateRepository;
 import com.withgahyo.domain.recommendation.repository.RecommendationJobRepository;
+import com.withgahyo.domain.user.entity.UserOnboardingProfile;
 import com.withgahyo.domain.user.repository.UserFacilityPreferenceRepository;
 import com.withgahyo.domain.user.repository.UserFoodPreferenceRepository;
 import com.withgahyo.domain.user.repository.UserOnboardingProfileRepository;
@@ -102,6 +108,9 @@ class RecommendationServiceTest {
 	private PlaceRepository placeRepository;
 
 	@Mock
+	private PlaceUpsertWriter placeUpsertWriter;
+
+	@Mock
 	private RecommendationAiClient recommendationAiClient;
 
 	private RecommendationService recommendationService;
@@ -123,6 +132,7 @@ class RecommendationServiceTest {
 			userFoodPreferenceRepository,
 			userFacilityPreferenceRepository,
 			placeRepository,
+			placeUpsertWriter,
 			recommendationAiClient
 		);
 	}
@@ -168,6 +178,172 @@ class RecommendationServiceTest {
 		assertThat(requestCaptor.getValue().participants()).hasSize(1);
 		verify(recommendationCandidateRepository).save(org.mockito.ArgumentMatchers.any(RecommendationCandidate.class));
 		verify(recommendationCandidateItemRepository).saveAll(org.mockito.ArgumentMatchers.anyList());
+		// placeId가 이미 있는 경우 기존 조회 흐름만 타고, find-or-create 경로는 호출되지 않아야 한다.
+		verify(placeUpsertWriter, never()).upsertAll(anyList());
+	}
+
+	@Test
+	void startGeneration_success_sendsEmptyDietaryRestrictionCodes_regardlessOfSpicyPreference() {
+		Course course = courseWithId(456L);
+		RecommendationJob savedJob = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+		Place place = placeWithId(501L);
+		AiRecommendationGenerateResponse aiResponse = aiResponseWithPlace(789L, 456L, 501L);
+		UserOnboardingProfile profile = UserOnboardingProfile.create(course.getCreatorUser());
+		profile.updateConditions(null, null, null, null, "avoid");
+
+		given(courseRepository.findById(456L)).willReturn(Optional.of(course));
+		given(recommendationJobRepository.save(org.mockito.ArgumentMatchers.any(RecommendationJob.class)))
+			.willReturn(savedJob);
+		given(courseParticipantRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseKeywordRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseMustVisitPlaceRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(userOnboardingProfileRepository.findAllById(List.of(1L))).willReturn(List.of(profile));
+		given(userTourismPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFoodPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFacilityPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(recommendationAiClient.generate(org.mockito.ArgumentMatchers.any(AiRecommendationGenerateRequest.class)))
+			.willReturn(aiResponse);
+		given(recommendationCandidateRepository.save(org.mockito.ArgumentMatchers.any(RecommendationCandidate.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
+		given(placeRepository.findAllByPlaceIdIn(List.of(501L))).willReturn(List.of(place));
+
+		recommendationService.startGeneration(1L, 456L, new StartRecommendationRequest(null, List.of(), null));
+
+		ArgumentCaptor<AiRecommendationGenerateRequest> requestCaptor =
+			ArgumentCaptor.forClass(AiRecommendationGenerateRequest.class);
+		verify(recommendationAiClient).generate(requestCaptor.capture());
+		assertThat(requestCaptor.getValue().participants().get(0).condition().dietaryRestrictionCodes()).isEmpty();
+	}
+
+	@Test
+	void startGeneration_success_createsNewPlace_whenPlaceIdIsNull() {
+		Course course = courseWithId(456L);
+		RecommendationJob savedJob = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+		AiRecommendationGenerateResponse.ItemResponse newItem = newPlaceItem("999999", "12", "새로운공원");
+		AiRecommendationGenerateResponse aiResponse = singleCandidateResponse(789L, 456L, newItem);
+		Place createdPlace = placeWithId(701L, "999999", "12");
+
+		stubStartGenerationPrerequisites(course, savedJob, aiResponse);
+		given(recommendationCandidateRepository.save(any(RecommendationCandidate.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
+		given(placeUpsertWriter.upsertAll(anyList())).willReturn(List.of(createdPlace));
+
+		StartRecommendationResponse response = recommendationService.startGeneration(
+			1L, 456L, new StartRecommendationRequest(null, List.of(), null)
+		);
+
+		assertThat(response.status()).isEqualTo(RecommendationJobStatus.COMPLETED);
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<List<ExternalPlaceSearchResult>> upsertCaptor = ArgumentCaptor.forClass(List.class);
+		verify(placeUpsertWriter).upsertAll(upsertCaptor.capture());
+		assertThat(upsertCaptor.getValue()).hasSize(1);
+		assertThat(upsertCaptor.getValue().get(0).externalPlaceId()).isEqualTo("999999");
+		assertThat(upsertCaptor.getValue().get(0).contentTypeId()).isEqualTo("12");
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<List<RecommendationCandidateItem>> itemsCaptor = ArgumentCaptor.forClass(List.class);
+		verify(recommendationCandidateItemRepository).saveAll(itemsCaptor.capture());
+		assertThat(itemsCaptor.getValue()).hasSize(1);
+		assertThat(itemsCaptor.getValue().get(0).getPlace()).isEqualTo(createdPlace);
+	}
+
+	@Test
+	void startGeneration_success_reusesExistingPlace_whenPlaceIdIsNullButAlreadyUpserted() {
+		// PlaceUpsertWriter는 findOrCreate이므로, 이미 존재하는 장소면 새 row 대신 기존 Place를 반환한다.
+		// RecommendationService 입장에서는 반환된 Place를 그대로 재사용해서 연결하는지만 검증한다.
+		Course course = courseWithId(456L);
+		RecommendationJob savedJob = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+		AiRecommendationGenerateResponse.ItemResponse newItem = newPlaceItem("126508", "12", "한밭수목원");
+		AiRecommendationGenerateResponse aiResponse = singleCandidateResponse(789L, 456L, newItem);
+		Place existingPlace = placeWithId(501L, "126508", "12");
+
+		stubStartGenerationPrerequisites(course, savedJob, aiResponse);
+		given(recommendationCandidateRepository.save(any(RecommendationCandidate.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
+		given(placeUpsertWriter.upsertAll(anyList())).willReturn(List.of(existingPlace));
+
+		recommendationService.startGeneration(1L, 456L, new StartRecommendationRequest(null, List.of(), null));
+
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<List<RecommendationCandidateItem>> itemsCaptor = ArgumentCaptor.forClass(List.class);
+		verify(recommendationCandidateItemRepository).saveAll(itemsCaptor.capture());
+		assertThat(itemsCaptor.getValue().get(0).getPlace().getPlaceId()).isEqualTo(501L);
+	}
+
+	@Test
+	void startGeneration_success_upsertsOnce_whenSamePlaceAppearsInMultipleCandidates() {
+		Course course = courseWithId(456L);
+		RecommendationJob savedJob = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+		AiRecommendationGenerateResponse.ItemResponse item = newPlaceItem("999999", "12", "새로운공원");
+		AiRecommendationGenerateResponse.CandidateResponse candidate1 = new AiRecommendationGenerateResponse.CandidateResponse(
+			1, "코스1", "요약1", "이유1", new BigDecimal("92.0"), 150,
+			List.of(new AiRecommendationGenerateResponse.DayResponse(1, List.of(item))), List.of()
+		);
+		AiRecommendationGenerateResponse.CandidateResponse candidate2 = new AiRecommendationGenerateResponse.CandidateResponse(
+			2, "코스2", "요약2", "이유2", new BigDecimal("88.0"), 140,
+			List.of(new AiRecommendationGenerateResponse.DayResponse(1, List.of(item))), List.of()
+		);
+		AiRecommendationGenerateResponse aiResponse =
+			new AiRecommendationGenerateResponse(789L, 456L, List.of(candidate1, candidate2));
+		Place createdPlace = placeWithId(701L, "999999", "12");
+
+		stubStartGenerationPrerequisites(course, savedJob, aiResponse);
+		given(recommendationCandidateRepository.save(any(RecommendationCandidate.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
+		given(placeUpsertWriter.upsertAll(anyList())).willReturn(List.of(createdPlace));
+
+		recommendationService.startGeneration(1L, 456L, new StartRecommendationRequest(null, List.of(), null));
+
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<List<ExternalPlaceSearchResult>> upsertCaptor = ArgumentCaptor.forClass(List.class);
+		verify(placeUpsertWriter).upsertAll(upsertCaptor.capture());
+		assertThat(upsertCaptor.getValue()).hasSize(1);
+		verify(recommendationCandidateRepository, org.mockito.Mockito.times(2))
+			.save(any(RecommendationCandidate.class));
+	}
+
+	@Test
+	void startGeneration_fail_whenNewPlaceItemHasNoIdentifyingInfo() {
+		Course course = courseWithId(456L);
+		RecommendationJob savedJob = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+		AiRecommendationGenerateResponse.ItemResponse invalidItem = new AiRecommendationGenerateResponse.ItemResponse(
+			1, "이름없는장소", "TOUR", "TOUR_API", null,
+			null, null, "12", "주소", "3", "1",
+			new BigDecimal("36.362"), new BigDecimal("127.459"), null,
+			60, List.of()
+		);
+		AiRecommendationGenerateResponse aiResponse = singleCandidateResponse(789L, 456L, invalidItem);
+
+		stubStartGenerationPrerequisites(course, savedJob, aiResponse);
+
+		StartRecommendationResponse response = recommendationService.startGeneration(
+			1L, 456L, new StartRecommendationRequest(null, List.of(), null)
+		);
+
+		assertThat(response.status()).isEqualTo(RecommendationJobStatus.FAILED);
+		assertThat(savedJob.getErrorMessage()).isEqualTo("AI 추천 장소의 식별 정보(contentId/contentTypeId)가 부족합니다.");
+		verify(placeUpsertWriter, never()).upsertAll(anyList());
+	}
+
+	private void stubStartGenerationPrerequisites(
+		Course course,
+		RecommendationJob savedJob,
+		AiRecommendationGenerateResponse aiResponse
+	) {
+		given(courseRepository.findById(456L)).willReturn(Optional.of(course));
+		given(recommendationJobRepository.save(any(RecommendationJob.class))).willReturn(savedJob);
+		given(courseParticipantRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseKeywordRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(courseMustVisitPlaceRepository.findAllByCourseId(456L)).willReturn(List.of());
+		given(userOnboardingProfileRepository.findAllById(List.of(1L))).willReturn(List.of());
+		given(userTourismPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFoodPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(userFacilityPreferenceRepository.findCodesByUserId(1L)).willReturn(List.of());
+		given(recommendationAiClient.generate(any(AiRecommendationGenerateRequest.class))).willReturn(aiResponse);
 	}
 
 	@Test
@@ -425,9 +601,13 @@ class RecommendationServiceTest {
 	}
 
 	private Place placeWithId(Long placeId) {
+		return placeWithId(placeId, "126508", "12");
+	}
+
+	private Place placeWithId(Long placeId, String contentId, String contentTypeId) {
 		Place place = Place.create(
-			"126508",
-			"12",
+			contentId,
+			contentTypeId,
 			"TOUR_API",
 			"NATURE",
 			Region.create("3", "1", "대전광역시 동구"),
@@ -442,6 +622,14 @@ class RecommendationServiceTest {
 	}
 
 	private AiRecommendationGenerateResponse aiResponseWithPlace(Long generationId, Long courseId, Long placeId) {
+		return singleCandidateResponse(generationId, courseId, itemWithPlaceId(placeId));
+	}
+
+	private AiRecommendationGenerateResponse singleCandidateResponse(
+		Long generationId,
+		Long courseId,
+		AiRecommendationGenerateResponse.ItemResponse... items
+	) {
 		return new AiRecommendationGenerateResponse(
 			generationId,
 			courseId,
@@ -452,22 +640,27 @@ class RecommendationServiceTest {
 				"필수 편의시설 조건을 우선 반영했습니다.",
 				new BigDecimal("92.0"),
 				150,
-				List.of(new AiRecommendationGenerateResponse.DayResponse(
-					1,
-					List.of(new AiRecommendationGenerateResponse.ItemResponse(
-						1,
-						"한밭수목원",
-						"TOUR",
-						"MOCK",
-						placeId,
-						"126508",
-						"대전광역시 서구 둔산대로 169",
-						70,
-						List.of("휴식 공간 필요")
-					))
-				)),
+				List.of(new AiRecommendationGenerateResponse.DayResponse(1, List.of(items))),
 				List.of()
 			))
+		);
+	}
+
+	private AiRecommendationGenerateResponse.ItemResponse itemWithPlaceId(Long placeId) {
+		return new AiRecommendationGenerateResponse.ItemResponse(
+			1, "한밭수목원", "TOUR", "MOCK", placeId,
+			null, "126508", "12", "대전광역시 서구 둔산대로 169", "3", "1",
+			new BigDecimal("36.366"), new BigDecimal("127.388"), null,
+			70, List.of("휴식 공간 필요")
+		);
+	}
+
+	private AiRecommendationGenerateResponse.ItemResponse newPlaceItem(String contentId, String contentTypeId, String name) {
+		return new AiRecommendationGenerateResponse.ItemResponse(
+			1, name, "TOUR", "TOUR_API", null,
+			contentId, contentId, contentTypeId, "대전광역시 대덕구 신상로 65", "3", "1",
+			new BigDecimal("36.362"), new BigDecimal("127.459"), null,
+			60, List.of()
 		);
 	}
 
