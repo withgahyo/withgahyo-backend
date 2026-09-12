@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -43,7 +44,8 @@ public class User {
 	@Column(name = "nickname", nullable = false, length = 50)
 	private String nickname;
 
-	@Column(name = "profile_image_url", length = 500)
+	@Lob
+	@Column(name = "profile_image_url", columnDefinition = "TEXT")
 	private String profileImageUrl;
 
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -82,8 +84,21 @@ public class User {
 		this.profileImageUrl = profileImageUrl;
 	}
 
+	public void updateOAuthEmail(String email) {
+		this.email = email;
+	}
+
 	public void withdraw(LocalDateTime withdrawnAt) {
 		this.deletedAt = withdrawnAt;
+	}
+
+	public void updateProfile(String nickname, String profileImageUrl) {
+		if (nickname != null) {
+			this.nickname = nickname;
+		}
+		if (profileImageUrl != null) {
+			this.profileImageUrl = profileImageUrl;
+		}
 	}
 
 	@PrePersist

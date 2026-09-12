@@ -106,7 +106,7 @@ class AuthServiceConcurrencyTest {
 		);
 
 		OAuthUserInfo userInfo = new OAuthUserInfo(OAuthProvider.KAKAO, "kakao-flush-race", "최신닉네임", null);
-		User existingUser = User.create("KAKAO", "kakao-flush-race", "기존닉네임", null);
+		User existingUser = User.create("KAKAO", "kakao-flush-race", "최신닉네임", null);
 		setUserId(existingUser, 7L);
 
 		given(kakaoOAuthUserClient.getUserInfo("code", "redirect")).willReturn(userInfo);
