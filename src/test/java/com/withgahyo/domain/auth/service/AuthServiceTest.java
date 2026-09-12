@@ -159,8 +159,8 @@ class AuthServiceTest {
 			"GOOGLE",
 			"google-1",
 			"old-google@example.com",
-			"이전구글",
-			"https://example.com/old-google.png"
+			"사용자가수정한이름",
+			"https://example.com/user-profile.png"
 		), 2L);
 
 		given(googleOAuthUserClient.getUserInfo("google-authorization-code", "http://localhost:5173/oauth/google/callback"))
@@ -180,8 +180,8 @@ class AuthServiceTest {
 		assertThat(response.isNewUser()).isFalse();
 		assertThat(response.user().userId()).isEqualTo(2L);
 		assertThat(response.user().email()).isEqualTo("google@example.com");
-		assertThat(response.user().nickname()).isEqualTo("구글유저");
-		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/google.png");
+		assertThat(response.user().nickname()).isEqualTo("사용자가수정한이름");
+		assertThat(response.user().profileImageUrl()).isEqualTo("https://example.com/user-profile.png");
 		assertThat(existingUser.getEmail()).isEqualTo("google@example.com");
 	}
 
