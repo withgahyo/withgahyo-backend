@@ -50,3 +50,8 @@ external:
   kakao:
     local-api-base-url: ${KAKAO_LOCAL_API_BASE_URL:https://dapi.kakao.com}
     rest-api-key: ${KAKAO_REST_API_KEY:${KAKAO_CLIENT_ID:}}
+
+app:
+  upload:
+    profile-images-dir: ${PROFILE_IMAGE_UPLOAD_DIR:uploads/profile-images}
+    profile-images-url-prefix: ${PROFILE_IMAGE_UPLOAD_URL_PREFIX:/uploads/profile-images}
