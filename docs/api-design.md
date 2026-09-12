@@ -402,8 +402,58 @@ Response:
 
 | API ID | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- | --- |
-| API-MY-001 | `GET` | `/api/v1/mypage` | 필요 | 내 프로필·여행 통계 조회 |
 | API-MY-002 | `PATCH` | `/api/v1/users/me` | 필요 | 내 프로필 수정 |
+| API-MY-003 | `POST` | `/api/v1/users/me/profile-image` | 필요 | 내 프로필 이미지 업로드 |
+
+`PATCH /api/v1/users/me`
+
+Request:
+
+```json
+{
+  "nickname": "지우",
+  "profileImageUrl": "https://example.com/profile.png"
+}
+```
+
+Response:
+
+```json
+{
+  "userId": 1,
+  "email": "user@example.com",
+  "nickname": "지우",
+  "profileImageUrl": "https://example.com/profile.png"
+}
+```
+
+- `nickname`, `profileImageUrl` 중 하나 이상을 전달해야 합니다.
+- `nickname`은 앞뒤 공백을 제거한 뒤 2자 이상 20자 이하로 저장합니다.
+- `profileImageUrl`은 `null`이면 기존 값을 유지하고, 문자열 값이 전달되면 그대로 저장합니다.
+
+`POST /api/v1/users/me/profile-image`
+
+Request:
+
+```http
+Content-Type: multipart/form-data
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| `file` | file | Y | 업로드할 프로필 이미지. `jpg`, `png`, `webp` 형식을 지원합니다. |
+
+Response:
+
+```json
+{
+  "profileImageUrl": "/uploads/profile-images/1-uuid.png"
+}
+```
+
+- 업로드 성공 시 서버 로컬 `app.upload.profile-images-dir`에 파일을 저장하고, `users.profile_image_url`을 응답 URL로 갱신합니다.
+- 기본 저장 경로는 `uploads/profile-images`, 기본 공개 URL prefix는 `/uploads/profile-images`입니다.
+- 저장된 이미지는 `/uploads/profile-images/**` 정적 리소스로 조회할 수 있습니다.
 
 ## 패키지 매핑
 
@@ -419,7 +469,7 @@ Response:
 | EXP | `domain.course` |
 | ALB | `domain.album`, `domain.video` |
 | REV | `domain.review` |
-| MY | `domain.mypage`, `domain.user` |
+| MY | `domain.user` |
 
 ## 구현 시 주의사항
 
@@ -428,5 +478,5 @@ Response:
 - 가입 사용자 기반 가족 연결 정책과 충돌하는 가족 프로필 직접 생성·수정 방식은 사용하지 않습니다.
 - 사진 업로드는 Presigned URL 발급과 업로드 완료 등록 흐름을 기준으로 구현합니다.
 - 신규 여행 영상 생성 API는 앨범 하위 리소스로 구현합니다.
-- `home`, `mypage`는 여러 도메인을 조합하는 조회 API이므로 별도 테이블을 만들지 않습니다.
+- `home`은 여러 도메인을 조합하는 조회 API이므로 별도 테이블을 만들지 않습니다.
 - 리뷰는 현재 ERD에 `deleted_at`이 없으므로 삭제가 필요하면 hard delete로 처리합니다.
