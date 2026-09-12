@@ -30,8 +30,13 @@ public class SecurityConfig {
 		"/api/v1/auth/login/google",
 		"/api/v1/auth/token/refresh",
 		"/api/v1/internal/places/upsert",
-		"/api/v1/internal/places/batch-get"
+		"/api/v1/internal/places/batch-get",
+		"/uploads/profile-images/**"
 	};
+
+	static String[] publicEndpoints() {
+		return PUBLIC_ENDPOINTS;
+	}
 
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
