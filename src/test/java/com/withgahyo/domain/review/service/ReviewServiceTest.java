@@ -131,12 +131,45 @@ class ReviewServiceTest {
 		assertThat(response.highlightOptions()).containsExactly("여행 코스", "편의시설", "맛집", "기억", "교통", "추천할래요");
 	}
 
+	@Test
+	void getMyReview_returnsReviewWithHighlights() {
+		User user = userWithId(User.create("KAKAO", "provider-user", "가효", null), 1L);
+		Region region = Region.create("3", "1", "대전");
+		Course course = courseWithId(
+			Course.create(user, region, "대전 가족여행", LocalDate.of(2026, 6, 22), LocalDate.of(2026, 6, 23)),
+			10L
+		);
+		Review review = reviewWithId(
+			Review.create(course, user, (byte) 5, "정말 만족스러웠어요.", (byte) 10),
+			100L
+		);
+
+		given(reviewRepository.findByCourse_CourseIdAndUser_UserId(10L, 1L)).willReturn(Optional.of(review));
+		given(reviewHighlightRepository.findByReview_ReviewId(100L)).willReturn(List.of(
+			ReviewHighlight.create(review, "여행 코스"),
+			ReviewHighlight.create(review, "맛집")
+		));
+
+		var response = reviewService.getMyReview(1L, 10L);
+
+		assertThat(response.reviewId()).isEqualTo(100L);
+		assertThat(response.courseId()).isEqualTo(10L);
+		assertThat(response.rating()).isEqualTo((byte) 5);
+		assertThat(response.comment()).isEqualTo("정말 만족스러웠어요.");
+		assertThat(response.recommendationScore()).isEqualTo((byte) 10);
+		assertThat(response.highlights()).containsExactly("여행 코스", "맛집");
+	}
+
 	private User userWithId(User user, Long userId) {
 		return setField(user, "userId", userId);
 	}
 
 	private Course courseWithId(Course course, Long courseId) {
 		return setField(course, "courseId", courseId);
+	}
+
+	private Review reviewWithId(Review review, Long reviewId) {
+		return setField(review, "reviewId", reviewId);
 	}
 
 	private <T> T setField(T target, String fieldName, Object value) {

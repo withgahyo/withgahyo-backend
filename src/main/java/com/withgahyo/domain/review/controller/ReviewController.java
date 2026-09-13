@@ -52,6 +52,14 @@ public class ReviewController {
 		return ApiResponse.success(reviewService.getReviewForm(requireUserId(authenticatedUser), courseId));
 	}
 
+	@GetMapping("/courses/{courseId}/reviews/me")
+	public ApiResponse<ReviewResponse> getMyReview(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long courseId
+	) {
+		return ApiResponse.success(reviewService.getMyReview(requireUserId(authenticatedUser), courseId));
+	}
+
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {
 		if (authenticatedUser == null) {
 			throw new BusinessException(SecurityErrorCode.UNAUTHORIZED);

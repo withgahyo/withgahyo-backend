@@ -44,6 +44,11 @@ public class ReviewService {
 		return ReviewFormResponse.from(getOwnedCourse(userId, courseId));
 	}
 
+	public ReviewResponse getMyReview(Long userId, Long courseId) {
+		Review review = getReview(userId, courseId);
+		return ReviewResponse.of(review, getHighlights(review));
+	}
+
 	@Transactional
 	public ReviewResponse createReview(Long userId, Long courseId, CreateReviewRequest request) {
 		Course course = getOwnedCourse(userId, courseId);
@@ -72,5 +77,16 @@ public class ReviewService {
 			throw new BusinessException(CourseErrorCode.COURSE_ACCESS_DENIED);
 		}
 		return course;
+	}
+
+	private Review getReview(Long userId, Long courseId) {
+		return reviewRepository.findByCourse_CourseIdAndUser_UserId(courseId, userId)
+			.orElseThrow(() -> new BusinessException(ReviewErrorCode.REVIEW_NOT_FOUND));
+	}
+
+	private List<String> getHighlights(Review review) {
+		return reviewHighlightRepository.findByReview_ReviewId(review.getReviewId()).stream()
+			.map(ReviewHighlight::getHighlightType)
+			.toList();
 	}
 }
