@@ -1,8 +1,11 @@
 package com.withgahyo.domain.community.controller;
 
+import com.withgahyo.domain.community.dto.CommunityCommentListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
 import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
+import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
+import com.withgahyo.domain.community.dto.CreateCommunityCommentResponse;
 import com.withgahyo.domain.community.service.CommunityService;
 import com.withgahyo.global.exception.BusinessException;
 import com.withgahyo.global.exception.code.SecurityErrorCode;
@@ -11,9 +14,12 @@ import com.withgahyo.global.security.AuthenticatedUser;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/community")
@@ -61,6 +67,25 @@ public class CommunityController {
 		@PathVariable Long postId
 	) {
 		return ApiResponse.success(communityService.getPostShareUrl(requireUserId(authenticatedUser), postId));
+	}
+
+	@GetMapping("/posts/{postId}/comments")
+	public ApiResponse<CommunityCommentListResponse> getComments(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long postId,
+		@RequestParam(required = false) Long cursor,
+		@RequestParam(defaultValue = "20") Integer size
+	) {
+		return ApiResponse.success(communityService.getComments(requireUserId(authenticatedUser), postId, cursor, size));
+	}
+
+	@PostMapping("/posts/{postId}/comments")
+	public ApiResponse<CreateCommunityCommentResponse> createComment(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long postId,
+		@Valid @RequestBody CreateCommunityCommentRequest request
+	) {
+		return ApiResponse.success(communityService.createComment(requireUserId(authenticatedUser), postId, request));
 	}
 
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {

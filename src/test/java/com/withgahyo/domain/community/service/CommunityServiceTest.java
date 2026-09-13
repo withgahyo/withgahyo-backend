@@ -2,14 +2,20 @@ package com.withgahyo.domain.community.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
+import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
+import com.withgahyo.domain.community.entity.CommunityComment;
 import com.withgahyo.domain.community.entity.CommunityPost;
 import com.withgahyo.domain.community.exception.CommunityErrorCode;
 import com.withgahyo.domain.community.repository.CommunityCommentRepository;
 import com.withgahyo.domain.community.repository.CommunityPostRepository;
 import com.withgahyo.domain.user.entity.User;
+import com.withgahyo.domain.user.repository.UserRepository;
 import com.withgahyo.global.exception.BusinessException;
+import com.withgahyo.global.exception.code.SecurityErrorCode;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,11 +36,14 @@ class CommunityServiceTest {
 	@Mock
 	private CommunityCommentRepository communityCommentRepository;
 
+	@Mock
+	private UserRepository userRepository;
+
 	private CommunityService communityService;
 
 	@BeforeEach
 	void setUp() {
-		communityService = new CommunityService(communityPostRepository, communityCommentRepository);
+		communityService = new CommunityService(communityPostRepository, communityCommentRepository, userRepository);
 	}
 
 	@Test
@@ -142,6 +151,84 @@ class CommunityServiceTest {
 		assertThat(response.shareUrl()).isEqualTo("https://api.gatigahyo.com/community/posts/11");
 	}
 
+	@Test
+	void getComments_returnsPage() {
+		User author = userWithId(User.create("KAKAO", "author", "작성자", null), 2L);
+		CommunityPost post = postWithId(
+			CommunityPost.create(author, "REVIEW", "추천 여행 후기", "가족 여행에 좋았습니다."),
+			11L,
+			LocalDateTime.of(2026, 9, 13, 11, 0)
+		);
+		CommunityComment first = commentWithId(
+			CommunityComment.create(post, author, "좋은 정보 감사합니다."),
+			30L,
+			LocalDateTime.of(2026, 9, 13, 12, 0)
+		);
+		CommunityComment extra = commentWithId(
+			CommunityComment.create(post, author, "다음 페이지 댓글입니다."),
+			29L,
+			LocalDateTime.of(2026, 9, 13, 11, 30)
+		);
+
+		given(communityPostRepository.findActiveById(11L)).willReturn(Optional.of(post));
+		given(communityCommentRepository.findActiveCommentsByPostId(11L, null, 2)).willReturn(List.of(first, extra));
+
+		var response = communityService.getComments(1L, 11L, null, 1);
+
+		assertThat(response.comments()).hasSize(1);
+		assertThat(response.comments().get(0).commentId()).isEqualTo(30L);
+		assertThat(response.hasNext()).isTrue();
+		assertThat(response.nextCursor()).isEqualTo("30");
+	}
+
+	@Test
+	void createComment_success_savesComment() {
+		User requester = userWithId(User.create("KAKAO", "me", "나", null), 1L);
+		User author = userWithId(User.create("KAKAO", "author", "작성자", null), 2L);
+		CommunityPost post = postWithId(
+			CommunityPost.create(author, "REVIEW", "추천 여행 후기", "가족 여행에 좋았습니다."),
+			11L,
+			LocalDateTime.of(2026, 9, 13, 11, 0)
+		);
+		CommunityComment savedComment = commentWithId(
+			CommunityComment.create(post, requester, "좋은 정보 감사합니다."),
+			30L,
+			LocalDateTime.of(2026, 9, 13, 12, 0)
+		);
+
+		given(communityPostRepository.findActiveById(11L)).willReturn(Optional.of(post));
+		given(userRepository.findById(1L)).willReturn(Optional.of(requester));
+		given(communityCommentRepository.save(any(CommunityComment.class))).willReturn(savedComment);
+
+		var response = communityService.createComment(
+			1L,
+			11L,
+			new CreateCommunityCommentRequest(" 좋은 정보 감사합니다. ")
+		);
+
+		assertThat(response.commentId()).isEqualTo(30L);
+		assertThat(response.content()).isEqualTo("좋은 정보 감사합니다.");
+		verify(communityCommentRepository).save(any(CommunityComment.class));
+	}
+
+	@Test
+	void createComment_fail_whenUserNotFound() {
+		User author = userWithId(User.create("KAKAO", "author", "작성자", null), 2L);
+		CommunityPost post = postWithId(
+			CommunityPost.create(author, "REVIEW", "추천 여행 후기", "가족 여행에 좋았습니다."),
+			11L,
+			LocalDateTime.of(2026, 9, 13, 11, 0)
+		);
+
+		given(communityPostRepository.findActiveById(11L)).willReturn(Optional.of(post));
+		given(userRepository.findById(1L)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> communityService.createComment(1L, 11L, new CreateCommunityCommentRequest("댓글")))
+			.isInstanceOfSatisfying(BusinessException.class, exception ->
+				assertThat(exception.getErrorCode()).isEqualTo(SecurityErrorCode.INVALID_TOKEN)
+			);
+	}
+
 	private User userWithId(User user, Long userId) {
 		return setField(user, "userId", userId);
 	}
@@ -150,6 +237,12 @@ class CommunityServiceTest {
 		setField(post, "postId", postId);
 		setField(post, "createdAt", createdAt);
 		return post;
+	}
+
+	private CommunityComment commentWithId(CommunityComment comment, Long commentId, LocalDateTime createdAt) {
+		setField(comment, "commentId", commentId);
+		setField(comment, "createdAt", createdAt);
+		return comment;
 	}
 
 	private <T> T setField(T target, String fieldName, Object value) {

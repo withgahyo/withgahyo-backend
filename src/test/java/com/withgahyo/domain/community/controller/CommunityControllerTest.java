@@ -5,8 +5,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.withgahyo.domain.community.dto.CommunityPostListResponse;
+import com.withgahyo.domain.community.dto.CommunityCommentListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
 import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
+import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
+import com.withgahyo.domain.community.dto.CreateCommunityCommentResponse;
 import com.withgahyo.domain.community.service.CommunityService;
 import com.withgahyo.global.security.AuthenticatedUser;
 import java.time.LocalDateTime;
@@ -125,5 +128,46 @@ class CommunityControllerTest {
 
 		assertThat(response.data()).isEqualTo(serviceResponse);
 		verify(communityService).getPostShareUrl(1L, 10L);
+	}
+
+	@Test
+	void getComments_returnsCommentList() {
+		CommunityCommentListResponse serviceResponse = new CommunityCommentListResponse(
+			List.of(new CommunityCommentListResponse.CommentResponse(
+				30L,
+				2L,
+				"가효",
+				"좋은 정보 감사합니다.",
+				LocalDateTime.of(2026, 9, 13, 12, 0)
+			)),
+			false,
+			null
+		);
+
+		given(communityService.getComments(1L, 10L, null, 20)).willReturn(serviceResponse);
+
+		var response = communityController.getComments(new AuthenticatedUser(1L), 10L, null, 20);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(communityService).getComments(1L, 10L, null, 20);
+	}
+
+	@Test
+	void createComment_returnsCreatedComment() {
+		CreateCommunityCommentRequest request = new CreateCommunityCommentRequest("좋은 정보 감사합니다.");
+		CreateCommunityCommentResponse serviceResponse = new CreateCommunityCommentResponse(
+			30L,
+			10L,
+			1L,
+			"좋은 정보 감사합니다.",
+			LocalDateTime.of(2026, 9, 13, 12, 0)
+		);
+
+		given(communityService.createComment(1L, 10L, request)).willReturn(serviceResponse);
+
+		var response = communityController.createComment(new AuthenticatedUser(1L), 10L, request);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(communityService).createComment(1L, 10L, request);
 	}
 }

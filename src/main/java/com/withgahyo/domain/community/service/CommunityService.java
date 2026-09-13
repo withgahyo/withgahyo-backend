@@ -1,13 +1,20 @@
 package com.withgahyo.domain.community.service;
 
+import com.withgahyo.domain.community.dto.CommunityCommentListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
 import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
+import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
+import com.withgahyo.domain.community.dto.CreateCommunityCommentResponse;
+import com.withgahyo.domain.community.entity.CommunityComment;
 import com.withgahyo.domain.community.entity.CommunityPost;
 import com.withgahyo.domain.community.exception.CommunityErrorCode;
 import com.withgahyo.domain.community.repository.CommunityCommentRepository;
 import com.withgahyo.domain.community.repository.CommunityPostRepository;
+import com.withgahyo.domain.user.entity.User;
+import com.withgahyo.domain.user.repository.UserRepository;
 import com.withgahyo.global.exception.BusinessException;
+import com.withgahyo.global.exception.code.SecurityErrorCode;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -22,13 +29,16 @@ public class CommunityService {
 
 	private final CommunityPostRepository communityPostRepository;
 	private final CommunityCommentRepository communityCommentRepository;
+	private final UserRepository userRepository;
 
 	public CommunityService(
 		CommunityPostRepository communityPostRepository,
-		CommunityCommentRepository communityCommentRepository
+		CommunityCommentRepository communityCommentRepository,
+		UserRepository userRepository
 	) {
 		this.communityPostRepository = communityPostRepository;
 		this.communityCommentRepository = communityCommentRepository;
+		this.userRepository = userRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -85,6 +95,52 @@ public class CommunityService {
 		return new CommunityPostShareUrlResponse(
 			post.getPostId(),
 			"https://api.gatigahyo.com/community/posts/" + post.getPostId()
+		);
+	}
+
+	@Transactional(readOnly = true)
+	public CommunityCommentListResponse getComments(Long userId, Long postId, Long cursor, Integer size) {
+		findActivePost(postId);
+		int pageSize = normalizeSize(size, DEFAULT_PAGE_SIZE);
+		List<CommunityComment> comments = communityCommentRepository.findActiveCommentsByPostId(
+			postId,
+			cursor,
+			pageSize + 1
+		);
+		boolean hasNext = comments.size() > pageSize;
+		List<CommunityComment> pageComments = hasNext ? comments.subList(0, pageSize) : comments;
+
+		return new CommunityCommentListResponse(
+			pageComments.stream()
+				.map(this::toCommentResponse)
+				.toList(),
+			hasNext,
+			hasNext && !pageComments.isEmpty()
+				? String.valueOf(pageComments.get(pageComments.size() - 1).getCommentId())
+				: null
+		);
+	}
+
+	@Transactional
+	public CreateCommunityCommentResponse createComment(
+		Long userId,
+		Long postId,
+		CreateCommunityCommentRequest request
+	) {
+		CommunityPost post = findActivePost(postId);
+		User author = userRepository.findById(userId)
+			.orElseThrow(() -> new BusinessException(SecurityErrorCode.INVALID_TOKEN));
+		CommunityComment comment = communityCommentRepository.save(CommunityComment.create(
+			post,
+			author,
+			request.normalizedContent()
+		));
+		return new CreateCommunityCommentResponse(
+			comment.getCommentId(),
+			comment.getPost().getPostId(),
+			comment.getAuthor().getUserId(),
+			comment.getContent(),
+			comment.getCreatedAt()
 		);
 	}
 
@@ -151,5 +207,15 @@ public class CommunityService {
 	private CommunityPost findActivePost(Long postId) {
 		return communityPostRepository.findActiveById(postId)
 			.orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
+	}
+
+	private CommunityCommentListResponse.CommentResponse toCommentResponse(CommunityComment comment) {
+		return new CommunityCommentListResponse.CommentResponse(
+			comment.getCommentId(),
+			comment.getAuthor().getUserId(),
+			comment.getAuthor().getNickname(),
+			comment.getContent(),
+			comment.getCreatedAt()
+		);
 	}
 }
