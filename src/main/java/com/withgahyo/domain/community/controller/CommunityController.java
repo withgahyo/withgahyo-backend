@@ -1,11 +1,14 @@
 package com.withgahyo.domain.community.controller;
 
+import com.withgahyo.domain.community.dto.BlockCommunityUserResponse;
 import com.withgahyo.domain.community.dto.CommunityCommentListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
 import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentResponse;
+import com.withgahyo.domain.community.dto.ReportCommunityPostRequest;
+import com.withgahyo.domain.community.dto.ReportCommunityPostResponse;
 import com.withgahyo.domain.community.service.CommunityService;
 import com.withgahyo.global.exception.BusinessException;
 import com.withgahyo.global.exception.code.SecurityErrorCode;
@@ -86,6 +89,23 @@ public class CommunityController {
 		@Valid @RequestBody CreateCommunityCommentRequest request
 	) {
 		return ApiResponse.success(communityService.createComment(requireUserId(authenticatedUser), postId, request));
+	}
+
+	@PostMapping("/posts/{postId}/reports")
+	public ApiResponse<ReportCommunityPostResponse> reportPost(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long postId,
+		@Valid @RequestBody ReportCommunityPostRequest request
+	) {
+		return ApiResponse.success(communityService.reportPost(requireUserId(authenticatedUser), postId, request));
+	}
+
+	@PostMapping("/users/{userId}/blocks")
+	public ApiResponse<BlockCommunityUserResponse> blockUser(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long userId
+	) {
+		return ApiResponse.success(communityService.blockUser(requireUserId(authenticatedUser), userId));
 	}
 
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {

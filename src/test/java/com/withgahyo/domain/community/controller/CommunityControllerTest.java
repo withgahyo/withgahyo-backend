@@ -10,6 +10,9 @@ import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
 import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentResponse;
+import com.withgahyo.domain.community.dto.ReportCommunityPostRequest;
+import com.withgahyo.domain.community.dto.ReportCommunityPostResponse;
+import com.withgahyo.domain.community.dto.BlockCommunityUserResponse;
 import com.withgahyo.domain.community.service.CommunityService;
 import com.withgahyo.global.security.AuthenticatedUser;
 import java.time.LocalDateTime;
@@ -169,5 +172,30 @@ class CommunityControllerTest {
 
 		assertThat(response.data()).isEqualTo(serviceResponse);
 		verify(communityService).createComment(1L, 10L, request);
+	}
+
+	@Test
+	void reportPost_returnsReportResponse() {
+		ReportCommunityPostRequest request = new ReportCommunityPostRequest("SPAM", "광고 게시글입니다.");
+		ReportCommunityPostResponse serviceResponse = new ReportCommunityPostResponse(40L, 10L, "SPAM");
+
+		given(communityService.reportPost(1L, 10L, request)).willReturn(serviceResponse);
+
+		var response = communityController.reportPost(new AuthenticatedUser(1L), 10L, request);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(communityService).reportPost(1L, 10L, request);
+	}
+
+	@Test
+	void blockUser_returnsBlockResponse() {
+		BlockCommunityUserResponse serviceResponse = new BlockCommunityUserResponse(50L, 2L);
+
+		given(communityService.blockUser(1L, 2L)).willReturn(serviceResponse);
+
+		var response = communityController.blockUser(new AuthenticatedUser(1L), 2L);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(communityService).blockUser(1L, 2L);
 	}
 }

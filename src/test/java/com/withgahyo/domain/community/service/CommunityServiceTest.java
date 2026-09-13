@@ -7,11 +7,16 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
+import com.withgahyo.domain.community.dto.ReportCommunityPostRequest;
+import com.withgahyo.domain.community.entity.CommunityUserBlock;
 import com.withgahyo.domain.community.entity.CommunityComment;
 import com.withgahyo.domain.community.entity.CommunityPost;
+import com.withgahyo.domain.community.entity.CommunityPostReport;
 import com.withgahyo.domain.community.exception.CommunityErrorCode;
 import com.withgahyo.domain.community.repository.CommunityCommentRepository;
 import com.withgahyo.domain.community.repository.CommunityPostRepository;
+import com.withgahyo.domain.community.repository.CommunityPostReportRepository;
+import com.withgahyo.domain.community.repository.CommunityUserBlockRepository;
 import com.withgahyo.domain.user.entity.User;
 import com.withgahyo.domain.user.repository.UserRepository;
 import com.withgahyo.global.exception.BusinessException;
@@ -39,11 +44,23 @@ class CommunityServiceTest {
 	@Mock
 	private UserRepository userRepository;
 
+	@Mock
+	private CommunityPostReportRepository communityPostReportRepository;
+
+	@Mock
+	private CommunityUserBlockRepository communityUserBlockRepository;
+
 	private CommunityService communityService;
 
 	@BeforeEach
 	void setUp() {
-		communityService = new CommunityService(communityPostRepository, communityCommentRepository, userRepository);
+		communityService = new CommunityService(
+			communityPostRepository,
+			communityCommentRepository,
+			userRepository,
+			communityPostReportRepository,
+			communityUserBlockRepository
+		);
 	}
 
 	@Test
@@ -229,6 +246,60 @@ class CommunityServiceTest {
 			);
 	}
 
+	@Test
+	void reportPost_success_savesReport() {
+		User reporter = userWithId(User.create("KAKAO", "me", "나", null), 1L);
+		User author = userWithId(User.create("KAKAO", "author", "작성자", null), 2L);
+		CommunityPost post = postWithId(
+			CommunityPost.create(author, "REVIEW", "추천 여행 후기", "가족 여행에 좋았습니다."),
+			11L,
+			LocalDateTime.of(2026, 9, 13, 11, 0)
+		);
+		CommunityPostReport savedReport = reportWithId(
+			CommunityPostReport.create(post, reporter, "SPAM", "광고 게시글입니다."),
+			40L
+		);
+
+		given(communityPostRepository.findActiveById(11L)).willReturn(Optional.of(post));
+		given(userRepository.findById(1L)).willReturn(Optional.of(reporter));
+		given(communityPostReportRepository.save(any(CommunityPostReport.class))).willReturn(savedReport);
+
+		var response = communityService.reportPost(
+			1L,
+			11L,
+			new ReportCommunityPostRequest("SPAM", "광고 게시글입니다.")
+		);
+
+		assertThat(response.reportId()).isEqualTo(40L);
+		assertThat(response.reason()).isEqualTo("SPAM");
+		verify(communityPostReportRepository).save(any(CommunityPostReport.class));
+	}
+
+	@Test
+	void blockUser_success_savesBlock() {
+		User requester = userWithId(User.create("KAKAO", "me", "나", null), 1L);
+		User blockedUser = userWithId(User.create("KAKAO", "blocked", "차단대상", null), 2L);
+		CommunityUserBlock savedBlock = blockWithId(CommunityUserBlock.create(requester, blockedUser), 50L);
+
+		given(userRepository.findById(1L)).willReturn(Optional.of(requester));
+		given(userRepository.findById(2L)).willReturn(Optional.of(blockedUser));
+		given(communityUserBlockRepository.save(any(CommunityUserBlock.class))).willReturn(savedBlock);
+
+		var response = communityService.blockUser(1L, 2L);
+
+		assertThat(response.blockId()).isEqualTo(50L);
+		assertThat(response.blockedUserId()).isEqualTo(2L);
+		verify(communityUserBlockRepository).save(any(CommunityUserBlock.class));
+	}
+
+	@Test
+	void blockUser_fail_whenBlockingSelf() {
+		assertThatThrownBy(() -> communityService.blockUser(1L, 1L))
+			.isInstanceOfSatisfying(BusinessException.class, exception ->
+				assertThat(exception.getErrorCode()).isEqualTo(CommunityErrorCode.SELF_BLOCK_NOT_ALLOWED)
+			);
+	}
+
 	private User userWithId(User user, Long userId) {
 		return setField(user, "userId", userId);
 	}
@@ -243,6 +314,16 @@ class CommunityServiceTest {
 		setField(comment, "commentId", commentId);
 		setField(comment, "createdAt", createdAt);
 		return comment;
+	}
+
+	private CommunityPostReport reportWithId(CommunityPostReport report, Long reportId) {
+		setField(report, "reportId", reportId);
+		return report;
+	}
+
+	private CommunityUserBlock blockWithId(CommunityUserBlock block, Long blockId) {
+		setField(block, "blockId", blockId);
+		return block;
 	}
 
 	private <T> T setField(T target, String fieldName, Object value) {

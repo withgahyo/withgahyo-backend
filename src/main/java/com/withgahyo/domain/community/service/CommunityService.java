@@ -1,16 +1,23 @@
 package com.withgahyo.domain.community.service;
 
+import com.withgahyo.domain.community.dto.BlockCommunityUserResponse;
 import com.withgahyo.domain.community.dto.CommunityCommentListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
 import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentResponse;
+import com.withgahyo.domain.community.dto.ReportCommunityPostRequest;
+import com.withgahyo.domain.community.dto.ReportCommunityPostResponse;
 import com.withgahyo.domain.community.entity.CommunityComment;
 import com.withgahyo.domain.community.entity.CommunityPost;
+import com.withgahyo.domain.community.entity.CommunityPostReport;
+import com.withgahyo.domain.community.entity.CommunityUserBlock;
 import com.withgahyo.domain.community.exception.CommunityErrorCode;
 import com.withgahyo.domain.community.repository.CommunityCommentRepository;
 import com.withgahyo.domain.community.repository.CommunityPostRepository;
+import com.withgahyo.domain.community.repository.CommunityPostReportRepository;
+import com.withgahyo.domain.community.repository.CommunityUserBlockRepository;
 import com.withgahyo.domain.user.entity.User;
 import com.withgahyo.domain.user.repository.UserRepository;
 import com.withgahyo.global.exception.BusinessException;
@@ -30,15 +37,21 @@ public class CommunityService {
 	private final CommunityPostRepository communityPostRepository;
 	private final CommunityCommentRepository communityCommentRepository;
 	private final UserRepository userRepository;
+	private final CommunityPostReportRepository communityPostReportRepository;
+	private final CommunityUserBlockRepository communityUserBlockRepository;
 
 	public CommunityService(
 		CommunityPostRepository communityPostRepository,
 		CommunityCommentRepository communityCommentRepository,
-		UserRepository userRepository
+		UserRepository userRepository,
+		CommunityPostReportRepository communityPostReportRepository,
+		CommunityUserBlockRepository communityUserBlockRepository
 	) {
 		this.communityPostRepository = communityPostRepository;
 		this.communityCommentRepository = communityCommentRepository;
 		this.userRepository = userRepository;
+		this.communityPostReportRepository = communityPostReportRepository;
+		this.communityUserBlockRepository = communityUserBlockRepository;
 	}
 
 	@Transactional(readOnly = true)
@@ -144,6 +157,40 @@ public class CommunityService {
 		);
 	}
 
+	@Transactional
+	public ReportCommunityPostResponse reportPost(
+		Long userId,
+		Long postId,
+		ReportCommunityPostRequest request
+	) {
+		CommunityPost post = findActivePost(postId);
+		User reporter = findUser(userId);
+		CommunityPostReport report = communityPostReportRepository.save(CommunityPostReport.create(
+			post,
+			reporter,
+			request.normalizedReason(),
+			request.normalizedDescription()
+		));
+
+		return new ReportCommunityPostResponse(
+			report.getReportId(),
+			report.getPost().getPostId(),
+			report.getReason()
+		);
+	}
+
+	@Transactional
+	public BlockCommunityUserResponse blockUser(Long requesterUserId, Long blockedUserId) {
+		if (requesterUserId.equals(blockedUserId)) {
+			throw new BusinessException(CommunityErrorCode.SELF_BLOCK_NOT_ALLOWED);
+		}
+		User blocker = findUser(requesterUserId);
+		User blockedUser = findUser(blockedUserId);
+		CommunityUserBlock block = communityUserBlockRepository.save(CommunityUserBlock.create(blocker, blockedUser));
+
+		return new BlockCommunityUserResponse(block.getBlockId(), block.getBlockedUser().getUserId());
+	}
+
 	private CommunityPostListResponse toPostListResponse(List<CommunityPost> posts, boolean hasNext) {
 		List<Long> postIds = posts.stream()
 			.map(CommunityPost::getPostId)
@@ -207,6 +254,11 @@ public class CommunityService {
 	private CommunityPost findActivePost(Long postId) {
 		return communityPostRepository.findActiveById(postId)
 			.orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
+	}
+
+	private User findUser(Long userId) {
+		return userRepository.findById(userId)
+			.orElseThrow(() -> new BusinessException(SecurityErrorCode.INVALID_TOKEN));
 	}
 
 	private CommunityCommentListResponse.CommentResponse toCommentResponse(CommunityComment comment) {
