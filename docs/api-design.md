@@ -398,6 +398,24 @@ Response:
 | API-REV-004 | `GET` | `/api/v1/courses/{courseId}/reviews/me` | 필요 | 내 만족도 평가 조회 |
 | API-REV-005 | `PATCH` | `/api/v1/courses/{courseId}/reviews/me` | 필요 | 만족도 평가 수정 |
 
+### COM
+
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-COM-001 | `GET` | `/api/v1/community/posts` | 필요 | 커뮤니티 게시글 목록·검색·필터 조회 |
+| API-COM-002 | `GET` | `/api/v1/community/posts/recommendations` | 필요 | 커뮤니티 인기·추천 게시글 조회 |
+| API-COM-003 | `GET` | `/api/v1/community/posts/{postId}` | 필요 | 커뮤니티 게시글 상세 조회 |
+| API-COM-004 | `GET` | `/api/v1/community/posts/{postId}/comments` | 필요 | 커뮤니티 댓글 목록 조회 |
+| API-COM-005 | `POST` | `/api/v1/community/posts/{postId}/comments` | 필요 | 커뮤니티 댓글 작성 |
+| API-COM-006 | `POST` | `/api/v1/community/posts/{postId}/reports` | 필요 | 커뮤니티 게시글 신고 |
+| API-COM-007 | `POST` | `/api/v1/community/users/{userId}/blocks` | 필요 | 커뮤니티 게시글 작성자 차단 |
+| API-COM-008 | `GET` | `/api/v1/community/posts/{postId}/share-url` | 필요 | 커뮤니티 게시글 공유 URL 조회 |
+
+- 게시글 목록은 `keyword`, `category`, `sort`, `cursor`, `size` 쿼리 파라미터를 지원합니다.
+- 게시글 목록과 댓글 목록은 커서 기반 페이지네이션을 사용하며, `hasNext`와 `nextCursor`를 응답합니다.
+- 댓글 작성, 게시글 신고, 작성자 차단은 인증 사용자 기준으로 처리합니다.
+- 작성자 차단은 자기 자신을 차단할 수 없습니다.
+
 ### MY
 
 | API ID | Method | Path | 인증 | 설명 |
@@ -469,6 +487,7 @@ Response:
 | EXP | `domain.course` |
 | ALB | `domain.album`, `domain.video` |
 | REV | `domain.review` |
+| COM | `domain.community` |
 | MY | `domain.user` |
 
 ## 구현 시 주의사항
