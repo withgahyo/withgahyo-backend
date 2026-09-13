@@ -5,6 +5,7 @@ import com.withgahyo.domain.course.entity.CourseStatus;
 import com.withgahyo.domain.course.exception.CourseErrorCode;
 import com.withgahyo.domain.course.repository.CourseRepository;
 import com.withgahyo.domain.review.dto.CreateReviewRequest;
+import com.withgahyo.domain.review.dto.MyReviewListResponse;
 import com.withgahyo.domain.review.dto.PendingReviewListResponse;
 import com.withgahyo.domain.review.dto.ReviewFormResponse;
 import com.withgahyo.domain.review.dto.ReviewResponse;
@@ -16,6 +17,8 @@ import com.withgahyo.domain.review.repository.ReviewHighlightRepository;
 import com.withgahyo.domain.review.repository.ReviewRepository;
 import com.withgahyo.global.exception.BusinessException;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +51,21 @@ public class ReviewService {
 	public ReviewResponse getMyReview(Long userId, Long courseId) {
 		Review review = getReview(userId, courseId);
 		return ReviewResponse.of(review, getHighlights(review));
+	}
+
+	public MyReviewListResponse getMyReviews(Long userId) {
+		List<Review> reviews = reviewRepository.findWrittenReviewsByUserId(userId);
+		List<Long> reviewIds = reviews.stream()
+			.map(Review::getReviewId)
+			.toList();
+		Map<Long, List<String>> highlightsByReviewId = reviewIds.isEmpty()
+			? Map.of()
+			: reviewHighlightRepository.findByReview_ReviewIdIn(reviewIds).stream()
+				.collect(Collectors.groupingBy(
+					highlight -> highlight.getReview().getReviewId(),
+					Collectors.mapping(ReviewHighlight::getHighlightType, Collectors.toList())
+				));
+		return MyReviewListResponse.of(reviews, highlightsByReviewId);
 	}
 
 	@Transactional

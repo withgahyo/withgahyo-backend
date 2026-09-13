@@ -1,6 +1,7 @@
 package com.withgahyo.domain.review.controller;
 
 import com.withgahyo.domain.review.dto.CreateReviewRequest;
+import com.withgahyo.domain.review.dto.MyReviewListResponse;
 import com.withgahyo.domain.review.dto.PendingReviewListResponse;
 import com.withgahyo.domain.review.dto.ReviewFormResponse;
 import com.withgahyo.domain.review.dto.ReviewResponse;
@@ -35,6 +36,13 @@ public class ReviewController {
 		@AuthenticationPrincipal AuthenticatedUser authenticatedUser
 	) {
 		return ApiResponse.success(reviewService.getPendingReviews(requireUserId(authenticatedUser)));
+	}
+
+	@GetMapping("/users/me/reviews")
+	public ApiResponse<MyReviewListResponse> getMyReviews(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser
+	) {
+		return ApiResponse.success(reviewService.getMyReviews(requireUserId(authenticatedUser)));
 	}
 
 	@PostMapping("/courses/{courseId}/reviews")

@@ -162,6 +162,50 @@ class ReviewServiceTest {
 	}
 
 	@Test
+	void getMyReviews_returnsWrittenReviewsWithCourseInfoAndHighlights() {
+		User user = userWithId(User.create("KAKAO", "provider-user", "가효", null), 1L);
+		Region region = Region.create("3", "1", "대전");
+		Course firstCourse = courseWithId(
+			Course.create(user, region, "대전 가족여행", LocalDate.of(2026, 6, 22), LocalDate.of(2026, 6, 23)),
+			10L
+		);
+		setField(firstCourse, "imageUrl", "https://example.com/daejeon.jpg");
+		Course secondCourse = courseWithId(
+			Course.create(user, region, "부산 효도여행", LocalDate.of(2026, 7, 4), LocalDate.of(2026, 7, 6)),
+			11L
+		);
+		setField(secondCourse, "imageUrl", "https://example.com/busan.jpg");
+		Review firstReview = reviewWithId(
+			Review.create(firstCourse, user, (byte) 5, "대전 여행이 좋았어요.", (byte) 10),
+			100L
+		);
+		Review secondReview = reviewWithId(
+			Review.create(secondCourse, user, (byte) 4, "부산 코스가 편했어요.", (byte) 8),
+			101L
+		);
+
+		given(reviewRepository.findWrittenReviewsByUserId(1L)).willReturn(List.of(firstReview, secondReview));
+		given(reviewHighlightRepository.findByReview_ReviewIdIn(List.of(100L, 101L))).willReturn(List.of(
+			ReviewHighlight.create(firstReview, "여행 코스"),
+			ReviewHighlight.create(firstReview, "맛집"),
+			ReviewHighlight.create(secondReview, "교통")
+		));
+
+		var response = reviewService.getMyReviews(1L);
+
+		assertThat(response.reviews()).hasSize(2);
+		assertThat(response.reviews().get(0).reviewId()).isEqualTo(100L);
+		assertThat(response.reviews().get(0).course().courseId()).isEqualTo(10L);
+		assertThat(response.reviews().get(0).course().title()).isEqualTo("대전 가족여행");
+		assertThat(response.reviews().get(0).course().period()).isEqualTo("2026. 06. 22 - 06. 23");
+		assertThat(response.reviews().get(0).course().imageUrl()).isEqualTo("https://example.com/daejeon.jpg");
+		assertThat(response.reviews().get(0).highlights()).containsExactly("여행 코스", "맛집");
+		assertThat(response.reviews().get(1).reviewId()).isEqualTo(101L);
+		assertThat(response.reviews().get(1).course().courseId()).isEqualTo(11L);
+		assertThat(response.reviews().get(1).highlights()).containsExactly("교통");
+	}
+
+	@Test
 	void updateMyReview_updatesReviewAndReplacesHighlights() {
 		User user = userWithId(User.create("KAKAO", "provider-user", "가효", null), 1L);
 		Region region = Region.create("3", "1", "대전");
