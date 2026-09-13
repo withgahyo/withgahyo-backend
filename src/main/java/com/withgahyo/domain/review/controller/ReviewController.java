@@ -2,6 +2,7 @@ package com.withgahyo.domain.review.controller;
 
 import com.withgahyo.domain.review.dto.CreateReviewRequest;
 import com.withgahyo.domain.review.dto.PendingReviewListResponse;
+import com.withgahyo.domain.review.dto.ReviewFormResponse;
 import com.withgahyo.domain.review.dto.ReviewResponse;
 import com.withgahyo.domain.review.service.ReviewService;
 import com.withgahyo.global.exception.BusinessException;
@@ -41,6 +42,14 @@ public class ReviewController {
 		@Valid @RequestBody CreateReviewRequest request
 	) {
 		return ApiResponse.success(reviewService.createReview(requireUserId(authenticatedUser), courseId, request));
+	}
+
+	@GetMapping("/courses/{courseId}/review-form")
+	public ApiResponse<ReviewFormResponse> getReviewForm(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long courseId
+	) {
+		return ApiResponse.success(reviewService.getReviewForm(requireUserId(authenticatedUser), courseId));
 	}
 
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {

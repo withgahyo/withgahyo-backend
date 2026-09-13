@@ -106,6 +106,31 @@ class ReviewServiceTest {
 		verify(reviewHighlightRepository).saveAll(anyList());
 	}
 
+	@Test
+	void getReviewForm_returnsCourseInfoAndHighlightOptions() {
+		User user = userWithId(User.create("KAKAO", "provider-user", "가효", null), 1L);
+		Region region = Region.create("3", "1", "대전");
+		Course course = courseWithId(
+			Course.create(user, region, "대전 가족여행", LocalDate.of(2026, 6, 22), LocalDate.of(2026, 6, 23)),
+			10L
+		);
+		setField(course, "imageUrl", "https://example.com/course.jpg");
+
+		given(courseRepository.findActiveById(10L)).willReturn(Optional.of(course));
+
+		var response = reviewService.getReviewForm(1L, 10L);
+
+		assertThat(response.course().courseId()).isEqualTo(10L);
+		assertThat(response.course().title()).isEqualTo("대전 가족여행");
+		assertThat(response.course().period()).isEqualTo("2026. 06. 22 - 06. 23");
+		assertThat(response.course().imageUrl()).isEqualTo("https://example.com/course.jpg");
+		assertThat(response.ratingMin()).isEqualTo((byte) 1);
+		assertThat(response.ratingMax()).isEqualTo((byte) 5);
+		assertThat(response.recommendationMin()).isEqualTo((byte) 0);
+		assertThat(response.recommendationMax()).isEqualTo((byte) 10);
+		assertThat(response.highlightOptions()).containsExactly("여행 코스", "편의시설", "맛집", "기억", "교통", "추천할래요");
+	}
+
 	private User userWithId(User user, Long userId) {
 		return setField(user, "userId", userId);
 	}

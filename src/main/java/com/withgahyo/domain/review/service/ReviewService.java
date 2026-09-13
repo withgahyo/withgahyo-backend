@@ -6,6 +6,7 @@ import com.withgahyo.domain.course.exception.CourseErrorCode;
 import com.withgahyo.domain.course.repository.CourseRepository;
 import com.withgahyo.domain.review.dto.CreateReviewRequest;
 import com.withgahyo.domain.review.dto.PendingReviewListResponse;
+import com.withgahyo.domain.review.dto.ReviewFormResponse;
 import com.withgahyo.domain.review.dto.ReviewResponse;
 import com.withgahyo.domain.review.entity.Review;
 import com.withgahyo.domain.review.entity.ReviewHighlight;
@@ -37,6 +38,10 @@ public class ReviewService {
 
 	public PendingReviewListResponse getPendingReviews(Long userId) {
 		return PendingReviewListResponse.from(courseRepository.findReviewPendingCourses(userId));
+	}
+
+	public ReviewFormResponse getReviewForm(Long userId, Long courseId) {
+		return ReviewFormResponse.from(getOwnedCourse(userId, courseId));
 	}
 
 	@Transactional
