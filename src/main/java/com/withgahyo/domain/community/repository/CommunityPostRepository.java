@@ -41,7 +41,7 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 				:keyword is null
 				or :keyword = ''
 				or lower(p.title) like lower(concat('%', :keyword, '%'))
-				or lower(p.content) like lower(concat('%', :keyword, '%'))
+				or p.content like concat('%', :keyword, '%')
 			)
 		order by
 			case when :sort = 'popular' then p.likeCount else 0 end desc,
