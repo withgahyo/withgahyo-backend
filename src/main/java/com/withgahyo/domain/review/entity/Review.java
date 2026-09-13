@@ -69,6 +69,12 @@ public class Review {
 		return review;
 	}
 
+	public void update(Byte rating, String comment, Byte recommendationScore) {
+		this.rating = rating;
+		this.comment = normalizeComment(comment);
+		this.recommendationScore = recommendationScore;
+	}
+
 	private static String normalizeComment(String comment) {
 		if (comment == null) {
 			return null;

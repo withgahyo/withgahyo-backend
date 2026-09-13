@@ -11,6 +11,7 @@ import com.withgahyo.domain.course.entity.CourseStatus;
 import com.withgahyo.domain.course.repository.CourseRepository;
 import com.withgahyo.domain.place.entity.Region;
 import com.withgahyo.domain.review.dto.CreateReviewRequest;
+import com.withgahyo.domain.review.dto.UpdateReviewRequest;
 import com.withgahyo.domain.review.entity.Review;
 import com.withgahyo.domain.review.entity.ReviewHighlight;
 import com.withgahyo.domain.review.repository.ReviewHighlightRepository;
@@ -158,6 +159,42 @@ class ReviewServiceTest {
 		assertThat(response.comment()).isEqualTo("정말 만족스러웠어요.");
 		assertThat(response.recommendationScore()).isEqualTo((byte) 10);
 		assertThat(response.highlights()).containsExactly("여행 코스", "맛집");
+	}
+
+	@Test
+	void updateMyReview_updatesReviewAndReplacesHighlights() {
+		User user = userWithId(User.create("KAKAO", "provider-user", "가효", null), 1L);
+		Region region = Region.create("3", "1", "대전");
+		Course course = courseWithId(
+			Course.create(user, region, "대전 가족여행", LocalDate.of(2026, 6, 22), LocalDate.of(2026, 6, 23)),
+			10L
+		);
+		Review review = reviewWithId(
+			Review.create(course, user, (byte) 5, "정말 만족스러웠어요.", (byte) 10),
+			100L
+		);
+		List<ReviewHighlight> existingHighlights = List.of(
+			ReviewHighlight.create(review, "여행 코스"),
+			ReviewHighlight.create(review, "맛집")
+		);
+		UpdateReviewRequest request = new UpdateReviewRequest(
+			(byte) 4,
+			" 다시 생각해도 편한 여행이었어요. ",
+			(byte) 8,
+			List.of("편의시설")
+		);
+
+		given(reviewRepository.findByCourse_CourseIdAndUser_UserId(10L, 1L)).willReturn(Optional.of(review));
+		given(reviewHighlightRepository.findByReview_ReviewId(100L)).willReturn(existingHighlights);
+
+		var response = reviewService.updateMyReview(1L, 10L, request);
+
+		assertThat(response.rating()).isEqualTo((byte) 4);
+		assertThat(response.comment()).isEqualTo("다시 생각해도 편한 여행이었어요.");
+		assertThat(response.recommendationScore()).isEqualTo((byte) 8);
+		assertThat(response.highlights()).containsExactly("편의시설");
+		verify(reviewHighlightRepository).deleteAll(existingHighlights);
+		verify(reviewHighlightRepository).saveAll(anyList());
 	}
 
 	private User userWithId(User user, Long userId) {

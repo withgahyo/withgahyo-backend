@@ -4,6 +4,7 @@ import com.withgahyo.domain.review.dto.CreateReviewRequest;
 import com.withgahyo.domain.review.dto.PendingReviewListResponse;
 import com.withgahyo.domain.review.dto.ReviewFormResponse;
 import com.withgahyo.domain.review.dto.ReviewResponse;
+import com.withgahyo.domain.review.dto.UpdateReviewRequest;
 import com.withgahyo.domain.review.service.ReviewService;
 import com.withgahyo.global.exception.BusinessException;
 import com.withgahyo.global.exception.code.SecurityErrorCode;
@@ -14,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,6 +60,15 @@ public class ReviewController {
 		@PathVariable Long courseId
 	) {
 		return ApiResponse.success(reviewService.getMyReview(requireUserId(authenticatedUser), courseId));
+	}
+
+	@PatchMapping("/courses/{courseId}/reviews/me")
+	public ApiResponse<ReviewResponse> updateMyReview(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long courseId,
+		@Valid @RequestBody UpdateReviewRequest request
+	) {
+		return ApiResponse.success(reviewService.updateMyReview(requireUserId(authenticatedUser), courseId, request));
 	}
 
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {

@@ -8,6 +8,7 @@ import com.withgahyo.domain.review.dto.CreateReviewRequest;
 import com.withgahyo.domain.review.dto.PendingReviewListResponse;
 import com.withgahyo.domain.review.dto.ReviewFormResponse;
 import com.withgahyo.domain.review.dto.ReviewResponse;
+import com.withgahyo.domain.review.dto.UpdateReviewRequest;
 import com.withgahyo.domain.review.entity.Review;
 import com.withgahyo.domain.review.entity.ReviewHighlight;
 import com.withgahyo.domain.review.exception.ReviewErrorCode;
@@ -47,6 +48,21 @@ public class ReviewService {
 	public ReviewResponse getMyReview(Long userId, Long courseId) {
 		Review review = getReview(userId, courseId);
 		return ReviewResponse.of(review, getHighlights(review));
+	}
+
+	@Transactional
+	public ReviewResponse updateMyReview(Long userId, Long courseId, UpdateReviewRequest request) {
+		Review review = getReview(userId, courseId);
+		review.update(request.rating(), request.comment(), request.recommendationScore());
+		reviewHighlightRepository.deleteAll(reviewHighlightRepository.findByReview_ReviewId(review.getReviewId()));
+
+		List<String> highlights = request.normalizedHighlights();
+		reviewHighlightRepository.saveAll(
+			highlights.stream()
+				.map(highlight -> ReviewHighlight.create(review, highlight))
+				.toList()
+		);
+		return ReviewResponse.of(review, highlights);
 	}
 
 	@Transactional
