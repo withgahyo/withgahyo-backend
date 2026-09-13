@@ -10,6 +10,14 @@ import org.springframework.data.repository.query.Param;
 
 public interface CommunityCommentRepository extends JpaRepository<CommunityComment, Long> {
 
+	@Query("""
+		select count(c.commentId)
+		from CommunityComment c
+		where c.deletedAt is null
+			and c.post.postId = :postId
+		""")
+	Long countActiveCommentsByPostId(@Param("postId") Long postId);
+
 	default Map<Long, Long> countActiveCommentsByPostIds(List<Long> postIds) {
 		if (postIds.isEmpty()) {
 			return Map.of();

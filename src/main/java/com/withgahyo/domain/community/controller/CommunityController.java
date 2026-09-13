@@ -1,6 +1,8 @@
 package com.withgahyo.domain.community.controller;
 
 import com.withgahyo.domain.community.dto.CommunityPostListResponse;
+import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
+import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
 import com.withgahyo.domain.community.service.CommunityService;
 import com.withgahyo.global.exception.BusinessException;
 import com.withgahyo.global.exception.code.SecurityErrorCode;
@@ -8,6 +10,7 @@ import com.withgahyo.global.response.ApiResponse;
 import com.withgahyo.global.security.AuthenticatedUser;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,6 +45,22 @@ public class CommunityController {
 		@RequestParam(defaultValue = "5") Integer size
 	) {
 		return ApiResponse.success(communityService.getRecommendedPosts(requireUserId(authenticatedUser), size));
+	}
+
+	@GetMapping("/posts/{postId}")
+	public ApiResponse<CommunityPostDetailResponse> getPostDetail(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long postId
+	) {
+		return ApiResponse.success(communityService.getPostDetail(requireUserId(authenticatedUser), postId));
+	}
+
+	@GetMapping("/posts/{postId}/share-url")
+	public ApiResponse<CommunityPostShareUrlResponse> getPostShareUrl(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long postId
+	) {
+		return ApiResponse.success(communityService.getPostShareUrl(requireUserId(authenticatedUser), postId));
 	}
 
 	private Long requireUserId(AuthenticatedUser authenticatedUser) {

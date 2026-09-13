@@ -2,6 +2,7 @@ package com.withgahyo.domain.community.repository;
 
 import com.withgahyo.domain.community.entity.CommunityPost;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +10,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CommunityPostRepository extends JpaRepository<CommunityPost, Long> {
+
+	@Query("""
+		select p
+		from CommunityPost p
+		join fetch p.author
+		where p.postId = :postId
+			and p.deletedAt is null
+		""")
+	Optional<CommunityPost> findActiveById(@Param("postId") Long postId);
 
 	default List<CommunityPost> searchActivePosts(
 		String keyword,

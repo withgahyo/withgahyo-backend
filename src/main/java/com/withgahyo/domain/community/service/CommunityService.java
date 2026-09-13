@@ -1,9 +1,13 @@
 package com.withgahyo.domain.community.service;
 
 import com.withgahyo.domain.community.dto.CommunityPostListResponse;
+import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
+import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
 import com.withgahyo.domain.community.entity.CommunityPost;
+import com.withgahyo.domain.community.exception.CommunityErrorCode;
 import com.withgahyo.domain.community.repository.CommunityCommentRepository;
 import com.withgahyo.domain.community.repository.CommunityPostRepository;
+import com.withgahyo.global.exception.BusinessException;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
@@ -57,6 +61,31 @@ public class CommunityService {
 			normalizeSize(size, DEFAULT_RECOMMENDATION_SIZE)
 		);
 		return toPostListResponse(posts, false);
+	}
+
+	@Transactional(readOnly = true)
+	public CommunityPostDetailResponse getPostDetail(Long userId, Long postId) {
+		CommunityPost post = findActivePost(postId);
+		return new CommunityPostDetailResponse(
+			post.getPostId(),
+			post.getAuthor().getUserId(),
+			post.getAuthor().getNickname(),
+			post.getCategory(),
+			post.getTitle(),
+			post.getContent(),
+			communityCommentRepository.countActiveCommentsByPostId(postId).intValue(),
+			post.getLikeCount(),
+			post.getCreatedAt()
+		);
+	}
+
+	@Transactional(readOnly = true)
+	public CommunityPostShareUrlResponse getPostShareUrl(Long userId, Long postId) {
+		CommunityPost post = findActivePost(postId);
+		return new CommunityPostShareUrlResponse(
+			post.getPostId(),
+			"https://api.gatigahyo.com/community/posts/" + post.getPostId()
+		);
 	}
 
 	private CommunityPostListResponse toPostListResponse(List<CommunityPost> posts, boolean hasNext) {
@@ -117,5 +146,10 @@ public class CommunityService {
 			return "latest";
 		}
 		return sort.trim();
+	}
+
+	private CommunityPost findActivePost(Long postId) {
+		return communityPostRepository.findActiveById(postId)
+			.orElseThrow(() -> new BusinessException(CommunityErrorCode.POST_NOT_FOUND));
 	}
 }

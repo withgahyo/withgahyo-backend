@@ -1,16 +1,20 @@
 package com.withgahyo.domain.community.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 import com.withgahyo.domain.community.entity.CommunityPost;
+import com.withgahyo.domain.community.exception.CommunityErrorCode;
 import com.withgahyo.domain.community.repository.CommunityCommentRepository;
 import com.withgahyo.domain.community.repository.CommunityPostRepository;
 import com.withgahyo.domain.user.entity.User;
+import com.withgahyo.global.exception.BusinessException;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -88,6 +92,54 @@ class CommunityServiceTest {
 		assertThat(response.posts().get(0).commentCount()).isEqualTo(4);
 		assertThat(response.hasNext()).isFalse();
 		assertThat(response.nextCursor()).isNull();
+	}
+
+	@Test
+	void getPostDetail_returnsPostWithCommentCount() {
+		User author = userWithId(User.create("KAKAO", "author", "작성자", null), 2L);
+		CommunityPost post = postWithId(
+			CommunityPost.create(author, "REVIEW", "추천 여행 후기", "가족 여행에 좋았습니다."),
+			11L,
+			LocalDateTime.of(2026, 9, 13, 11, 0)
+		);
+		post.increaseLikeCount();
+
+		given(communityPostRepository.findActiveById(11L)).willReturn(Optional.of(post));
+		given(communityCommentRepository.countActiveCommentsByPostId(11L)).willReturn(4L);
+
+		var response = communityService.getPostDetail(1L, 11L);
+
+		assertThat(response.postId()).isEqualTo(11L);
+		assertThat(response.authorId()).isEqualTo(2L);
+		assertThat(response.commentCount()).isEqualTo(4);
+		assertThat(response.likeCount()).isEqualTo(1);
+	}
+
+	@Test
+	void getPostDetail_fail_whenPostNotFound() {
+		given(communityPostRepository.findActiveById(404L)).willReturn(Optional.empty());
+
+		assertThatThrownBy(() -> communityService.getPostDetail(1L, 404L))
+			.isInstanceOfSatisfying(BusinessException.class, exception ->
+				assertThat(exception.getErrorCode()).isEqualTo(CommunityErrorCode.POST_NOT_FOUND)
+			);
+	}
+
+	@Test
+	void getPostShareUrl_returnsFrontendShareUrl() {
+		User author = userWithId(User.create("KAKAO", "author", "작성자", null), 2L);
+		CommunityPost post = postWithId(
+			CommunityPost.create(author, "REVIEW", "추천 여행 후기", "가족 여행에 좋았습니다."),
+			11L,
+			LocalDateTime.of(2026, 9, 13, 11, 0)
+		);
+
+		given(communityPostRepository.findActiveById(11L)).willReturn(Optional.of(post));
+
+		var response = communityService.getPostShareUrl(1L, 11L);
+
+		assertThat(response.postId()).isEqualTo(11L);
+		assertThat(response.shareUrl()).isEqualTo("https://api.gatigahyo.com/community/posts/11");
 	}
 
 	private User userWithId(User user, Long userId) {

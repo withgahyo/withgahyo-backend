@@ -5,6 +5,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.withgahyo.domain.community.dto.CommunityPostListResponse;
+import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
+import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
 import com.withgahyo.domain.community.service.CommunityService;
 import com.withgahyo.global.security.AuthenticatedUser;
 import java.time.LocalDateTime;
@@ -86,5 +88,42 @@ class CommunityControllerTest {
 
 		assertThat(response.data()).isEqualTo(serviceResponse);
 		verify(communityService).getRecommendedPosts(1L, 5);
+	}
+
+	@Test
+	void getPostDetail_returnsPostDetail() {
+		CommunityPostDetailResponse serviceResponse = new CommunityPostDetailResponse(
+			10L,
+			2L,
+			"가효",
+			"REVIEW",
+			"부모님과 다녀온 여행",
+			"주차장과 엘리베이터가 가까웠어요.",
+			4,
+			8,
+			LocalDateTime.of(2026, 9, 13, 11, 0)
+		);
+
+		given(communityService.getPostDetail(1L, 10L)).willReturn(serviceResponse);
+
+		var response = communityController.getPostDetail(new AuthenticatedUser(1L), 10L);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(communityService).getPostDetail(1L, 10L);
+	}
+
+	@Test
+	void getPostShareUrl_returnsShareUrl() {
+		CommunityPostShareUrlResponse serviceResponse = new CommunityPostShareUrlResponse(
+			10L,
+			"https://api.gatigahyo.com/community/posts/10"
+		);
+
+		given(communityService.getPostShareUrl(1L, 10L)).willReturn(serviceResponse);
+
+		var response = communityController.getPostShareUrl(new AuthenticatedUser(1L), 10L);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(communityService).getPostShareUrl(1L, 10L);
 	}
 }
