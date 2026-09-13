@@ -18,4 +18,13 @@ public class ReviewHighlightId implements Serializable {
 
 	@Column(name = "highlight_type")
 	private String highlightType;
+
+	private ReviewHighlightId(Long reviewId, String highlightType) {
+		this.reviewId = reviewId;
+		this.highlightType = highlightType;
+	}
+
+	public static ReviewHighlightId of(Long reviewId, String highlightType) {
+		return new ReviewHighlightId(reviewId, highlightType);
+	}
 }

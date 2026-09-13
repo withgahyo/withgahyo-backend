@@ -59,6 +59,24 @@ public class Review {
 	@Column(name = "updated_at", nullable = false)
 	private LocalDateTime updatedAt;
 
+	public static Review create(Course course, User user, Byte rating, String comment, Byte recommendationScore) {
+		Review review = new Review();
+		review.course = course;
+		review.user = user;
+		review.rating = rating;
+		review.comment = normalizeComment(comment);
+		review.recommendationScore = recommendationScore;
+		return review;
+	}
+
+	private static String normalizeComment(String comment) {
+		if (comment == null) {
+			return null;
+		}
+		String trimmed = comment.strip();
+		return trimmed.isEmpty() ? null : trimmed;
+	}
+
 	@PrePersist
 	void prePersist() {
 		LocalDateTime now = LocalDateTime.now();
