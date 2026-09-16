@@ -13,11 +13,17 @@ public record CommunityPostListResponse(
 		Long postId,
 		Long authorId,
 		String authorNickname,
-		String category,
-		String title,
+		String authorProfileImageUrl,
+		Long courseId,
+		String courseTitle,
+		String regionName,
+		String courseImageUrl,
+		Byte rating,
+		List<String> highlights,
 		String contentPreview,
 		int commentCount,
 		int likeCount,
+		boolean likedByMe,
 		LocalDateTime createdAt
 	) {
 	}

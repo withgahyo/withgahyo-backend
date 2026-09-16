@@ -400,21 +400,31 @@ Response:
 
 ### COM
 
+커뮤니티는 사용자가 작성한 여행 후기(`Review`)를 공유하고, 별점·좋았던점·후기 글을 다른 사용자와 함께 보는 공간입니다. `CommunityPost`는 항상 하나의 `Review`를 1:1로 참조하며, 자체적인 제목/본문을 갖지 않습니다.
+
 | API ID | Method | Path | 인증 | 설명 |
 | --- | --- | --- | --- | --- |
-| API-COM-001 | `GET` | `/api/v1/community/posts` | 필요 | 커뮤니티 게시글 목록·검색·필터 조회 |
-| API-COM-002 | `GET` | `/api/v1/community/posts/recommendations` | 필요 | 커뮤니티 인기·추천 게시글 조회 |
-| API-COM-003 | `GET` | `/api/v1/community/posts/{postId}` | 필요 | 커뮤니티 게시글 상세 조회 |
-| API-COM-004 | `GET` | `/api/v1/community/posts/{postId}/comments` | 필요 | 커뮤니티 댓글 목록 조회 |
-| API-COM-005 | `POST` | `/api/v1/community/posts/{postId}/comments` | 필요 | 커뮤니티 댓글 작성 |
-| API-COM-006 | `POST` | `/api/v1/community/posts/{postId}/reports` | 필요 | 커뮤니티 게시글 신고 |
-| API-COM-007 | `POST` | `/api/v1/community/users/{userId}/blocks` | 필요 | 커뮤니티 게시글 작성자 차단 |
-| API-COM-008 | `GET` | `/api/v1/community/posts/{postId}/share-url` | 필요 | 커뮤니티 게시글 공유 URL 조회 |
+| API-COM-001 | `POST` | `/api/v1/community/posts` | 필요 | 내 여행 후기를 커뮤니티에 공유 |
+| API-COM-002 | `DELETE` | `/api/v1/community/posts/{postId}` | 필요 | 공유한 게시글 삭제(공유 취소) |
+| API-COM-003 | `GET` | `/api/v1/community/posts` | 필요 | 커뮤니티 게시글 목록·검색·필터 조회 |
+| API-COM-004 | `GET` | `/api/v1/community/posts/recommendations` | 필요 | 좋아요가 많은 추천 후기 Top N 조회 |
+| API-COM-005 | `GET` | `/api/v1/community/posts/{postId}` | 필요 | 커뮤니티 게시글 상세 조회 |
+| API-COM-006 | `GET` | `/api/v1/community/posts/{postId}/share-url` | 필요 | 커뮤니티 게시글 공유 URL 조회 |
+| API-COM-007 | `POST` | `/api/v1/community/posts/{postId}/likes` | 필요 | 게시글 좋아요 |
+| API-COM-008 | `DELETE` | `/api/v1/community/posts/{postId}/likes` | 필요 | 게시글 좋아요 취소 |
+| API-COM-009 | `GET` | `/api/v1/community/posts/{postId}/comments` | 필요 | 커뮤니티 댓글 목록 조회 |
+| API-COM-010 | `POST` | `/api/v1/community/posts/{postId}/comments` | 필요 | 커뮤니티 댓글 작성 |
+| API-COM-011 | `POST` | `/api/v1/community/posts/{postId}/reports` | 필요 | 커뮤니티 게시글 신고 |
+| API-COM-012 | `POST` | `/api/v1/community/users/{userId}/blocks` | 필요 | 커뮤니티 게시글 작성자 차단 |
 
-- 게시글 목록은 `keyword`, `category`, `sort`, `cursor`, `size` 쿼리 파라미터를 지원합니다.
+- 게시글 공유는 본인이 작성한 `Review`만 가능하며, 이미 공유한 후기를 다시 공유하면 409(`POST_ALREADY_SHARED`)를 반환합니다.
+- 게시글 목록/상세 응답은 작성자 정보(`authorId`, `authorNickname`, `authorProfileImageUrl`), 코스 정보(`courseId`, `courseTitle`, `regionName`, `courseImageUrl`), 별점(`rating`), 좋았던점(`highlights`), 후기 글(`content`/`contentPreview`), 좋아요 수(`likeCount`)와 내가 좋아요를 눌렀는지 여부(`likedByMe`)를 포함합니다.
+- 게시글 목록은 `keyword`, `highlightType`, `sort`(`latest`|`popular`), `cursor`, `size` 쿼리 파라미터를 지원합니다. `highlightType`은 후기에 등록된 좋았던점 태그로 필터링합니다.
 - 게시글 목록과 댓글 목록은 커서 기반 페이지네이션을 사용하며, `hasNext`와 `nextCursor`를 응답합니다.
+- 좋아요는 사용자당 게시글별로 1회만 반영되도록 토글로 동작하며(중복 요청은 무시), 좋아요/좋아요 취소 응답에 최신 `likeCount`를 함께 반환합니다.
 - 댓글 작성, 게시글 신고, 작성자 차단은 인증 사용자 기준으로 처리합니다.
 - 작성자 차단은 자기 자신을 차단할 수 없습니다.
+- 게시글 삭제는 본인이 공유한 게시글만 가능하며 soft delete로 처리합니다.
 
 ### MY
 

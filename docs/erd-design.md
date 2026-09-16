@@ -7,7 +7,7 @@
 - DBMS: MySQL 8.0+
 - 주요 PK: `BIGINT AUTO_INCREMENT`
 - 생성/수정 시간: `created_at`, `updated_at`은 `DATETIME`
-- soft delete 대상: `users`, `family_relation`, `course`, `photo`
+- soft delete 대상: `users`, `family_relation`, `course`, `photo`, `community_post`, `community_comment`
 - 복합키 매핑 테이블은 별도 surrogate key 없이 ERD의 복합 PK를 사용합니다.
 
 ## 테이블 목록
@@ -42,6 +42,11 @@
 | 26 | `review` | `Review` | 코스 리뷰 |
 | 27 | `review_highlight` | `ReviewHighlight` | 리뷰 하이라이트 |
 | 28 | `refresh_token` | `RefreshToken` | 인증 Refresh Token 세션 |
+| 29 | `community_post` | `CommunityPost` | 커뮤니티에 공유된 여행 후기 |
+| 30 | `community_post_like` | `CommunityPostLike` | 커뮤니티 게시글 좋아요 |
+| 31 | `community_comment` | `CommunityComment` | 커뮤니티 댓글 |
+| 32 | `community_post_report` | `CommunityPostReport` | 커뮤니티 게시글 신고 |
+| 33 | `community_user_block` | `CommunityUserBlock` | 커뮤니티 사용자 차단 |
 
 ## Mermaid ERD
 
@@ -89,6 +94,15 @@ erDiagram
     COURSE ||--o{ REVIEW : receives
     USERS ||--o{ REVIEW : writes
     REVIEW ||--o{ REVIEW_HIGHLIGHT : has
+
+    REVIEW ||--o| COMMUNITY_POST : shared_as
+    USERS ||--o{ COMMUNITY_POST_LIKE : likes
+    COMMUNITY_POST ||--o{ COMMUNITY_POST_LIKE : liked_by
+    USERS ||--o{ COMMUNITY_COMMENT : writes
+    COMMUNITY_POST ||--o{ COMMUNITY_COMMENT : has
+    USERS ||--o{ COMMUNITY_POST_REPORT : reports
+    COMMUNITY_POST ||--o{ COMMUNITY_POST_REPORT : reported_by
+    USERS ||--o{ COMMUNITY_USER_BLOCK : blocks
 ```
 
 ## 핵심 컬럼 메모
@@ -122,6 +136,14 @@ erDiagram
 - `review`는 `(course_id, user_id)` unique로 한 사용자가 한 코스에 리뷰를 하나만 작성합니다.
 - `review_highlight`는 `(review_id, highlight_type)` 복합키입니다.
 
+### 커뮤니티
+
+- `community_post`는 자체 제목/본문 없이 `review_id`(unique FK)로 `review`를 1:1 참조하는 "공유 게시글"입니다. 작성자·별점·좋았던점·후기 글은 모두 참조한 `review`/`review_highlight`에서 가져옵니다.
+- `community_post.like_count`는 `community_post_like` 등록/삭제와 같은 트랜잭션에서 함께 증감하는 비정규화 카운터입니다.
+- `community_post_like`는 `(user_id, post_id)` 복합키로 사용자당 게시글별 좋아요를 1회로 제한합니다.
+- `community_comment`, `community_post_report`는 `post_id`, 작성자/신고자 `user_id`를 참조하는 일반 자식 테이블입니다.
+- `community_user_block`은 `(blocker_user_id, blocked_user_id)`가 unique이며 자기 자신은 차단할 수 없습니다.
+
 ## Unique 제약
 
 | 테이블 | 제약 |
@@ -140,6 +162,8 @@ erDiagram
 | `recommendation_candidate` | `(recommendation_job_id, rank)` |
 | `recommendation_candidate_item` | `(recommendation_candidate_id, day_number, visit_order)` |
 | `review` | `(course_id, user_id)` |
+| `community_post` | `(review_id)` |
+| `community_user_block` | `(blocker_user_id, blocked_user_id)` |
 
 ## API 문서와 맞춰야 할 이름
 

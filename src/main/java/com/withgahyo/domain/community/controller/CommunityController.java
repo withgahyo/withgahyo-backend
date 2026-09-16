@@ -2,11 +2,13 @@ package com.withgahyo.domain.community.controller;
 
 import com.withgahyo.domain.community.dto.BlockCommunityUserResponse;
 import com.withgahyo.domain.community.dto.CommunityCommentListResponse;
-import com.withgahyo.domain.community.dto.CommunityPostListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
+import com.withgahyo.domain.community.dto.CommunityPostLikeResponse;
+import com.withgahyo.domain.community.dto.CommunityPostListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentResponse;
+import com.withgahyo.domain.community.dto.CreateCommunityPostRequest;
 import com.withgahyo.domain.community.dto.ReportCommunityPostRequest;
 import com.withgahyo.domain.community.dto.ReportCommunityPostResponse;
 import com.withgahyo.domain.community.service.CommunityService;
@@ -14,7 +16,9 @@ import com.withgahyo.global.exception.BusinessException;
 import com.withgahyo.global.exception.code.SecurityErrorCode;
 import com.withgahyo.global.response.ApiResponse;
 import com.withgahyo.global.security.AuthenticatedUser;
+import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/community")
@@ -34,17 +37,43 @@ public class CommunityController {
 		this.communityService = communityService;
 	}
 
+	@PostMapping("/posts")
+	public ApiResponse<CommunityPostDetailResponse> createPost(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@Valid @RequestBody CreateCommunityPostRequest request
+	) {
+		return ApiResponse.success(communityService.createPost(requireUserId(authenticatedUser), request));
+	}
+
+	@DeleteMapping("/posts/{postId}")
+	public ApiResponse<Void> deletePost(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long postId
+	) {
+		communityService.deletePost(requireUserId(authenticatedUser), postId);
+		return ApiResponse.ok();
+	}
+
 	@GetMapping("/posts")
 	public ApiResponse<CommunityPostListResponse> getPosts(
 		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
 		@RequestParam(required = false) String keyword,
-		@RequestParam(required = false) String category,
+		@RequestParam(required = false) String regionName,
+		@RequestParam(required = false) String highlightType,
 		@RequestParam(defaultValue = "latest") String sort,
 		@RequestParam(required = false) Long cursor,
 		@RequestParam(defaultValue = "20") Integer size
 	) {
 		return ApiResponse.success(
-			communityService.getPosts(requireUserId(authenticatedUser), keyword, category, sort, cursor, size)
+			communityService.getPosts(
+				requireUserId(authenticatedUser),
+				keyword,
+				regionName,
+				highlightType,
+				sort,
+				cursor,
+				size
+			)
 		);
 	}
 
@@ -70,6 +99,22 @@ public class CommunityController {
 		@PathVariable Long postId
 	) {
 		return ApiResponse.success(communityService.getPostShareUrl(requireUserId(authenticatedUser), postId));
+	}
+
+	@PostMapping("/posts/{postId}/likes")
+	public ApiResponse<CommunityPostLikeResponse> likePost(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long postId
+	) {
+		return ApiResponse.success(communityService.likePost(requireUserId(authenticatedUser), postId));
+	}
+
+	@DeleteMapping("/posts/{postId}/likes")
+	public ApiResponse<CommunityPostLikeResponse> unlikePost(
+		@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+		@PathVariable Long postId
+	) {
+		return ApiResponse.success(communityService.unlikePost(requireUserId(authenticatedUser), postId));
 	}
 
 	@GetMapping("/posts/{postId}/comments")

@@ -14,34 +14,53 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 	@Query("""
 		select p
 		from CommunityPost p
-		join fetch p.author
+		join fetch p.review r
+		join fetch r.user
+		join fetch r.course c
+		join fetch c.region
 		where p.postId = :postId
 			and p.deletedAt is null
 		""")
 	Optional<CommunityPost> findActiveById(@Param("postId") Long postId);
 
+	boolean existsByReview_ReviewIdAndDeletedAtIsNull(Long reviewId);
+
 	default List<CommunityPost> searchActivePosts(
 		String keyword,
-		String category,
+		String regionName,
+		String highlightType,
 		String sort,
 		Long cursor,
 		int limit
 	) {
-		return searchActivePosts(keyword, category, sort, cursor, PageRequest.of(0, limit));
+		return searchActivePosts(keyword, regionName, highlightType, sort, cursor, PageRequest.of(0, limit));
 	}
 
 	@Query("""
 		select p
 		from CommunityPost p
-		join fetch p.author
+		join fetch p.review r
+		join fetch r.user
+		join fetch r.course c
+		join fetch c.region
 		where p.deletedAt is null
 			and (:cursor is null or p.postId < :cursor)
-			and (:category is null or :category = '' or p.category = :category)
+			and (
+				:regionName is null or :regionName = ''
+				or c.region.name = :regionName
+			)
+			and (
+				:highlightType is null or :highlightType = ''
+				or exists (
+					select 1 from ReviewHighlight rh
+					where rh.review = r and rh.highlightType = :highlightType
+				)
+			)
 			and (
 				:keyword is null
 				or :keyword = ''
-				or lower(p.title) like lower(concat('%', :keyword, '%'))
-				or p.content like concat('%', :keyword, '%')
+				or lower(c.title) like lower(concat('%', :keyword, '%'))
+				or lower(r.comment) like lower(concat('%', :keyword, '%'))
 			)
 		order by
 			case when :sort = 'popular' then p.likeCount else 0 end desc,
@@ -49,7 +68,8 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 		""")
 	List<CommunityPost> searchActivePosts(
 		@Param("keyword") String keyword,
-		@Param("category") String category,
+		@Param("regionName") String regionName,
+		@Param("highlightType") String highlightType,
 		@Param("sort") String sort,
 		@Param("cursor") Long cursor,
 		Pageable pageable
@@ -62,7 +82,10 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 	@Query("""
 		select p
 		from CommunityPost p
-		join fetch p.author
+		join fetch p.review r
+		join fetch r.user
+		join fetch r.course c
+		join fetch c.region
 		where p.deletedAt is null
 		order by p.likeCount desc, p.postId desc
 		""")

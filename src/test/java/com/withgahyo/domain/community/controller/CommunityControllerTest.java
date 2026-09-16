@@ -4,15 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
-import com.withgahyo.domain.community.dto.CommunityPostListResponse;
+import com.withgahyo.domain.community.dto.BlockCommunityUserResponse;
 import com.withgahyo.domain.community.dto.CommunityCommentListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostDetailResponse;
+import com.withgahyo.domain.community.dto.CommunityPostLikeResponse;
+import com.withgahyo.domain.community.dto.CommunityPostListResponse;
 import com.withgahyo.domain.community.dto.CommunityPostShareUrlResponse;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentRequest;
 import com.withgahyo.domain.community.dto.CreateCommunityCommentResponse;
+import com.withgahyo.domain.community.dto.CreateCommunityPostRequest;
 import com.withgahyo.domain.community.dto.ReportCommunityPostRequest;
 import com.withgahyo.domain.community.dto.ReportCommunityPostResponse;
-import com.withgahyo.domain.community.dto.BlockCommunityUserResponse;
 import com.withgahyo.domain.community.service.CommunityService;
 import com.withgahyo.global.security.AuthenticatedUser;
 import java.time.LocalDateTime;
@@ -37,53 +39,55 @@ class CommunityControllerTest {
 	}
 
 	@Test
+	void createPost_returnsSharedPostDetail() {
+		CreateCommunityPostRequest request = new CreateCommunityPostRequest(100L);
+		CommunityPostDetailResponse serviceResponse = samplePostDetail();
+
+		given(communityService.createPost(1L, request)).willReturn(serviceResponse);
+
+		var response = communityController.createPost(new AuthenticatedUser(1L), request);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(communityService).createPost(1L, request);
+	}
+
+	@Test
+	void deletePost_deletesOwnPost() {
+		var response = communityController.deletePost(new AuthenticatedUser(1L), 10L);
+
+		assertThat(response.success()).isTrue();
+		verify(communityService).deletePost(1L, 10L);
+	}
+
+	@Test
 	void getPosts_returnsFilteredPostList() {
 		CommunityPostListResponse serviceResponse = new CommunityPostListResponse(
-			List.of(new CommunityPostListResponse.PostSummaryResponse(
-				10L,
-				1L,
-				"지우",
-				"TRAVEL_TIP",
-				"대전 가족 여행 팁",
-				"휠체어 동선이 편한 코스입니다.",
-				3,
-				2,
-				LocalDateTime.of(2026, 9, 13, 10, 0)
-			)),
+			List.of(samplePostSummary()),
 			true,
 			"10"
 		);
 
-		given(communityService.getPosts(1L, "대전", "TRAVEL_TIP", "latest", 20L, 10))
+		given(communityService.getPosts(1L, "대전", "부산", "맛집", "latest", 20L, 10))
 			.willReturn(serviceResponse);
 
 		var response = communityController.getPosts(
 			new AuthenticatedUser(1L),
 			"대전",
-			"TRAVEL_TIP",
+			"부산",
+			"맛집",
 			"latest",
 			20L,
 			10
 		);
 
 		assertThat(response.data()).isEqualTo(serviceResponse);
-		verify(communityService).getPosts(1L, "대전", "TRAVEL_TIP", "latest", 20L, 10);
+		verify(communityService).getPosts(1L, "대전", "부산", "맛집", "latest", 20L, 10);
 	}
 
 	@Test
 	void getRecommendedPosts_returnsRecommendedPostList() {
 		CommunityPostListResponse serviceResponse = new CommunityPostListResponse(
-			List.of(new CommunityPostListResponse.PostSummaryResponse(
-				11L,
-				2L,
-				"가효",
-				"REVIEW",
-				"부모님과 다녀온 추천 코스",
-				"주차장과 엘리베이터가 가까웠어요.",
-				8,
-				4,
-				LocalDateTime.of(2026, 9, 13, 11, 0)
-			)),
+			List.of(samplePostSummary()),
 			false,
 			null
 		);
@@ -98,17 +102,7 @@ class CommunityControllerTest {
 
 	@Test
 	void getPostDetail_returnsPostDetail() {
-		CommunityPostDetailResponse serviceResponse = new CommunityPostDetailResponse(
-			10L,
-			2L,
-			"가효",
-			"REVIEW",
-			"부모님과 다녀온 여행",
-			"주차장과 엘리베이터가 가까웠어요.",
-			4,
-			8,
-			LocalDateTime.of(2026, 9, 13, 11, 0)
-		);
+		CommunityPostDetailResponse serviceResponse = samplePostDetail();
 
 		given(communityService.getPostDetail(1L, 10L)).willReturn(serviceResponse);
 
@@ -131,6 +125,30 @@ class CommunityControllerTest {
 
 		assertThat(response.data()).isEqualTo(serviceResponse);
 		verify(communityService).getPostShareUrl(1L, 10L);
+	}
+
+	@Test
+	void likePost_returnsLikeResponse() {
+		CommunityPostLikeResponse serviceResponse = CommunityPostLikeResponse.of(10L, true, 5);
+
+		given(communityService.likePost(1L, 10L)).willReturn(serviceResponse);
+
+		var response = communityController.likePost(new AuthenticatedUser(1L), 10L);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(communityService).likePost(1L, 10L);
+	}
+
+	@Test
+	void unlikePost_returnsLikeResponse() {
+		CommunityPostLikeResponse serviceResponse = CommunityPostLikeResponse.of(10L, false, 4);
+
+		given(communityService.unlikePost(1L, 10L)).willReturn(serviceResponse);
+
+		var response = communityController.unlikePost(new AuthenticatedUser(1L), 10L);
+
+		assertThat(response.data()).isEqualTo(serviceResponse);
+		verify(communityService).unlikePost(1L, 10L);
 	}
 
 	@Test
@@ -197,5 +215,45 @@ class CommunityControllerTest {
 
 		assertThat(response.data()).isEqualTo(serviceResponse);
 		verify(communityService).blockUser(1L, 2L);
+	}
+
+	private CommunityPostListResponse.PostSummaryResponse samplePostSummary() {
+		return new CommunityPostListResponse.PostSummaryResponse(
+			10L,
+			1L,
+			"지우",
+			"https://example.com/profile.png",
+			5L,
+			"대전 가족 여행",
+			"대전",
+			"https://example.com/course.png",
+			(byte) 5,
+			List.of("맛집", "편의시설"),
+			"휠체어 동선이 편한 코스입니다.",
+			3,
+			2,
+			false,
+			LocalDateTime.of(2026, 9, 13, 10, 0)
+		);
+	}
+
+	private CommunityPostDetailResponse samplePostDetail() {
+		return new CommunityPostDetailResponse(
+			10L,
+			2L,
+			"가효",
+			"https://example.com/profile.png",
+			5L,
+			"부모님과 다녀온 여행",
+			"대전",
+			"https://example.com/course.png",
+			(byte) 5,
+			List.of("맛집", "편의시설"),
+			"주차장과 엘리베이터가 가까웠어요.",
+			4,
+			8,
+			false,
+			LocalDateTime.of(2026, 9, 13, 11, 0)
+		);
 	}
 }
