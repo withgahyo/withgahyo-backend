@@ -28,4 +28,12 @@ public class ReviewHighlight {
 
 	@Column(name = "highlight_type", nullable = false, length = 50, insertable = false, updatable = false)
 	private String highlightType;
+
+	public static ReviewHighlight create(Review review, String highlightType) {
+		ReviewHighlight reviewHighlight = new ReviewHighlight();
+		reviewHighlight.id = ReviewHighlightId.of(review.getReviewId(), highlightType);
+		reviewHighlight.review = review;
+		reviewHighlight.highlightType = highlightType;
+		return reviewHighlight;
+	}
 }
