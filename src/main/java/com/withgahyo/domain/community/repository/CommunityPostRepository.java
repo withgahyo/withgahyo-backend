@@ -48,6 +48,7 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 			and (
 				:regionName is null or :regionName = ''
 				or c.region.name = :regionName
+				or c.region.name like concat(:regionName, '%')
 			)
 			and (
 				:highlightType is null or :highlightType = ''
