@@ -1,5 +1,7 @@
 package com.withgahyo.domain.review.service;
 
+import com.withgahyo.domain.community.entity.CommunityPost;
+import com.withgahyo.domain.community.repository.CommunityPostRepository;
 import com.withgahyo.domain.course.entity.Course;
 import com.withgahyo.domain.course.entity.CourseStatus;
 import com.withgahyo.domain.course.exception.CourseErrorCode;
@@ -29,15 +31,18 @@ public class ReviewService {
 	private final CourseRepository courseRepository;
 	private final ReviewRepository reviewRepository;
 	private final ReviewHighlightRepository reviewHighlightRepository;
+	private final CommunityPostRepository communityPostRepository;
 
 	public ReviewService(
 		CourseRepository courseRepository,
 		ReviewRepository reviewRepository,
-		ReviewHighlightRepository reviewHighlightRepository
+		ReviewHighlightRepository reviewHighlightRepository,
+		CommunityPostRepository communityPostRepository
 	) {
 		this.courseRepository = courseRepository;
 		this.reviewRepository = reviewRepository;
 		this.reviewHighlightRepository = reviewHighlightRepository;
+		this.communityPostRepository = communityPostRepository;
 	}
 
 	public PendingReviewListResponse getPendingReviews(Long userId) {
@@ -101,6 +106,7 @@ public class ReviewService {
 			.map(highlight -> ReviewHighlight.create(review, highlight))
 			.toList();
 		reviewHighlightRepository.saveAll(reviewHighlights);
+		communityPostRepository.save(CommunityPost.create(review));
 		return ReviewResponse.of(review, highlights);
 	}
 

@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import com.withgahyo.domain.community.entity.CommunityPost;
+import com.withgahyo.domain.community.repository.CommunityPostRepository;
 import com.withgahyo.domain.course.entity.Course;
 import com.withgahyo.domain.course.entity.CourseStatus;
 import com.withgahyo.domain.course.repository.CourseRepository;
@@ -25,6 +27,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -40,11 +43,19 @@ class ReviewServiceTest {
 	@Mock
 	private ReviewHighlightRepository reviewHighlightRepository;
 
+	@Mock
+	private CommunityPostRepository communityPostRepository;
+
 	private ReviewService reviewService;
 
 	@BeforeEach
 	void setUp() {
-		reviewService = new ReviewService(courseRepository, reviewRepository, reviewHighlightRepository);
+		reviewService = new ReviewService(
+			courseRepository,
+			reviewRepository,
+			reviewHighlightRepository,
+			communityPostRepository
+		);
 	}
 
 	@Test
@@ -105,6 +116,42 @@ class ReviewServiceTest {
 		assertThat(response.highlights()).containsExactly("쉬운 동선", "맛집");
 		verify(reviewRepository).save(any(Review.class));
 		verify(reviewHighlightRepository).saveAll(anyList());
+	}
+
+	@Test
+	void createReview_publishesCommunityPost() {
+		User user = userWithId(User.create("KAKAO", "provider-user", "가효", null), 1L);
+		Region region = Region.create("3", "1", "대전");
+		Course course = courseWithId(
+			Course.create(user, region, "대전 가족여행", LocalDate.of(2026, 6, 22), LocalDate.of(2026, 6, 23)),
+			10L
+		);
+		setField(course, "status", CourseStatus.COMPLETED);
+		CreateReviewRequest request = new CreateReviewRequest(
+			(byte) 5,
+			"부모님과 함께 다시 가고 싶은 여행이었어요.",
+			(byte) 10,
+			List.of("여행 코스")
+		);
+
+		given(courseRepository.findActiveById(10L)).willReturn(Optional.of(course));
+		given(reviewRepository.existsByCourse_CourseIdAndUser_UserId(10L, 1L)).willReturn(false);
+		given(reviewRepository.save(any(Review.class))).willAnswer(invocation -> {
+			Review review = invocation.getArgument(0);
+			setField(review, "reviewId", 100L);
+			return review;
+		});
+
+		reviewService.createReview(1L, 10L, request);
+
+		ArgumentCaptor<CommunityPost> postCaptor = ArgumentCaptor.forClass(CommunityPost.class);
+		verify(communityPostRepository).save(postCaptor.capture());
+		assertThat(postCaptor.getValue().getReview().getReviewId()).isEqualTo(100L);
+		assertThat(postCaptor.getValue().getAuthorUserId()).isEqualTo(1L);
+		assertThat(postCaptor.getValue().getCategory()).isEqualTo("REVIEW");
+		assertThat(postCaptor.getValue().getTitle()).isEqualTo("대전 가족여행");
+		assertThat(postCaptor.getValue().getContent()).isEqualTo("부모님과 함께 다시 가고 싶은 여행이었어요.");
+		assertThat(postCaptor.getValue().getLikeCount()).isZero();
 	}
 
 	@Test
