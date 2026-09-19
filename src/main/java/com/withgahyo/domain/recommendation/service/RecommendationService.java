@@ -158,7 +158,34 @@ public class RecommendationService {
 		RecommendationJob job = findCompletedJobForUser(userId, generationId);
 		List<RecommendationCandidate> candidates =
 			recommendationCandidateRepository.findAllByRecommendationJobRecommendationJobIdOrderByRankAsc(generationId);
-		return RecommendationCandidatesResponse.of(job, candidates);
+		return RecommendationCandidatesResponse.of(job, candidates, findThumbnailImageUrls(candidates));
+	}
+
+	// 후보 대표 이미지는 여행 순서(dayNumber, visitOrder)상 가장 먼저 나오는 유효한 Place.imageUrl 이다.
+	// Place.imageUrl 은 이후 보강될 수 있어 저장하지 않고 조회 시점마다 계산하며,
+	// 후보 수와 무관하게 조인 조회 한 번으로 모든 후보의 대표 이미지를 구한다.
+	private Map<Long, String> findThumbnailImageUrls(List<RecommendationCandidate> candidates) {
+		if (candidates.isEmpty()) {
+			return Map.of();
+		}
+
+		List<Long> candidateIds = candidates.stream()
+			.map(RecommendationCandidate::getRecommendationCandidateId)
+			.toList();
+		Map<Long, String> thumbnailByCandidateId = new LinkedHashMap<>();
+		for (RecommendationCandidateItem item :
+			recommendationCandidateItemRepository.findAllWithPlaceByRecommendationCandidateIdIn(candidateIds)) {
+			String imageUrl = item.getPlace().getImageUrl();
+			if (!StringUtils.hasText(imageUrl)) {
+				continue;
+			}
+			// 조회 결과가 이미 여행 순서로 정렬되어 있으므로 후보별 첫 유효 이미지만 남긴다.
+			thumbnailByCandidateId.putIfAbsent(
+				item.getRecommendationCandidate().getRecommendationCandidateId(),
+				imageUrl
+			);
+		}
+		return thumbnailByCandidateId;
 	}
 
 	@Transactional(readOnly = true)
@@ -429,7 +456,25 @@ public class RecommendationService {
 		if (placeById.size() != placeIds.size()) {
 			throw new RecommendationAiException("AI 추천 장소를 찾을 수 없습니다.");
 		}
+		backfillMissingImageUrls(items, placeById);
 		return placeById;
+	}
+
+	// 기존 placeId로 재사용하는 장소는 갱신 대상이 아니지만, Kakao 검색으로 먼저 저장되어 imageUrl이 비어 있는 경우가 있다.
+	// AI 응답에 유효한 imageUrl이 있으면 그 값만 보강한다(이미 이미지가 있으면 유지, 다른 필드는 건드리지 않음).
+	private void backfillMissingImageUrls(
+		List<AiRecommendationGenerateResponse.ItemResponse> items,
+		Map<Long, Place> placeById
+	) {
+		for (AiRecommendationGenerateResponse.ItemResponse item : items) {
+			if (item.placeId() == null || !StringUtils.hasText(item.imageUrl())) {
+				continue;
+			}
+			Place place = placeById.get(item.placeId());
+			if (place != null) {
+				place.backfillImageUrlIfBlank(item.imageUrl());
+			}
+		}
 	}
 
 	// placeId가 없는 item은 AI가 Spring place 테이블에 아직 없는 새 장소를 외부 식별 정보로 내려준 것이다.

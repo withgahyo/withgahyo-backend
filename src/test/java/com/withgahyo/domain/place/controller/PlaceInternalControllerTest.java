@@ -73,8 +73,9 @@ class PlaceInternalControllerTest {
 		InternalPlaceBatchGetRequest request = new InternalPlaceBatchGetRequest(List.of(1L, 2L));
 		InternalPlaceBatchGetResponse serviceResponse = new InternalPlaceBatchGetResponse(
 			List.of(new InternalPlaceBatchGetResponse.PlaceResponse(
-				1L, "한밭수목원", new BigDecimal("36.366"), new BigDecimal("127.388"),
-				"TOUR_API", "126508", "12", "대전광역시 서구 둔산대로 169", "3", "1"
+				1L, "한밭수목원", "NATURE", new BigDecimal("36.366"), new BigDecimal("127.388"),
+				"TOUR_API", "126508", "12", "대전광역시 서구 둔산대로 169", "3", "1",
+				"https://example.com/place.jpg"
 			)),
 			List.of(2L)
 		);

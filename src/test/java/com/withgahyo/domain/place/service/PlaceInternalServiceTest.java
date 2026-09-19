@@ -92,6 +92,42 @@ class PlaceInternalServiceTest {
 	}
 
 	@Test
+	void batchGetPlaces_returnsImageUrlAndCategory() {
+		// AI 서버 backend_place_client 가 must-visit 장소를 PlaceCandidate 로 만들 때 쓰도록 노출한다.
+		Place place = placeWithId(1L);
+		given(placeRepository.findAllByPlaceIdIn(List.of(1L))).willReturn(List.of(place));
+
+		InternalPlaceBatchGetResponse response = placeInternalService.batchGetPlaces(
+			new InternalPlaceBatchGetRequest(List.of(1L))
+		);
+
+		InternalPlaceBatchGetResponse.PlaceResponse placeResponse = response.places().get(0);
+		assertThat(placeResponse.imageUrl()).isEqualTo("https://example.com/place.jpg");
+		assertThat(placeResponse.category()).isEqualTo("NATURE");
+		// 기존 필드도 그대로 유지된다.
+		assertThat(placeResponse.placeId()).isEqualTo(1L);
+		assertThat(placeResponse.contentId()).isEqualTo("126508");
+		assertThat(placeResponse.contentTypeId()).isEqualTo("12");
+		assertThat(placeResponse.address()).isEqualTo("대전광역시 서구 둔산대로 169");
+		assertThat(placeResponse.areaCode()).isEqualTo("3");
+		assertThat(placeResponse.sigunguCode()).isEqualTo("1");
+	}
+
+	@Test
+	void batchGetPlaces_returnsNullImageUrl_whenPlaceHasNoImage() {
+		Place place = placeWithId(1L);
+		ReflectionTestUtils.setField(place, "imageUrl", null);
+		given(placeRepository.findAllByPlaceIdIn(List.of(1L))).willReturn(List.of(place));
+
+		InternalPlaceBatchGetResponse response = placeInternalService.batchGetPlaces(
+			new InternalPlaceBatchGetRequest(List.of(1L))
+		);
+
+		assertThat(response.places().get(0).imageUrl()).isNull();
+		assertThat(response.places().get(0).category()).isEqualTo("NATURE");
+	}
+
+	@Test
 	void batchGetPlaces_success_returnsMissingPlaceIds_whenSomeIdsNotFound() {
 		Place place1 = placeWithId(1L);
 		given(placeRepository.findAllByPlaceIdIn(List.of(1L, 2L))).willReturn(List.of(place1));

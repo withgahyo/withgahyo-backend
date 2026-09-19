@@ -81,10 +81,21 @@ class TourApiPlaceSearchClient implements ProviderPlaceSearchClient {
 			firstText(string(item.get("addr1")), string(item.get("addr2"))),
 			string(item.get("areacode")),
 			string(item.get("sigungucode")),
-			string(item.get("firstimage")),
+			imageUrl(item),
 			decimal(item.get("mapy")),
 			decimal(item.get("mapx"))
 		);
+	}
+
+	// TourAPI는 원본 이미지가 없으면 firstimage를 빈 문자열로 내려주고, 썸네일만 있는 경우 firstimage2에만 값이 담긴다.
+	// 추가 호출 없이 같은 응답 안의 firstimage2를 fallback으로 사용하고, 둘 다 비어 있으면 null을 유지한다.
+	private String imageUrl(Map<String, Object> item) {
+		String firstImage = string(item.get("firstimage"));
+		if (StringUtils.hasText(firstImage)) {
+			return firstImage;
+		}
+		String secondImage = string(item.get("firstimage2"));
+		return StringUtils.hasText(secondImage) ? secondImage : null;
 	}
 
 	private String mapCategory(String contentTypeId, String cat1) {

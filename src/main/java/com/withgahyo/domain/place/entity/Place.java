@@ -145,4 +145,19 @@ public class Place {
 		this.longitude = longitude;
 		this.imageUrl = imageUrl;
 	}
+
+	/**
+	 * 비어 있는 이미지만 외부 응답 값으로 보강한다. 이미 이미지가 있으면 덮어쓰지 않으며,
+	 * imageUrl 외의 다른 필드는 건드리지 않는다(전체 갱신은 {@link #updateExternalInfo} 담당).
+	 */
+	public void backfillImageUrlIfBlank(String imageUrl) {
+		if (hasText(this.imageUrl) || !hasText(imageUrl)) {
+			return;
+		}
+		this.imageUrl = imageUrl;
+	}
+
+	private static boolean hasText(String value) {
+		return value != null && !value.isBlank();
+	}
 }

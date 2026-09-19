@@ -18,6 +18,7 @@ import com.withgahyo.domain.course.entity.Course;
 import com.withgahyo.domain.course.entity.CourseInterestKeyword;
 import com.withgahyo.domain.course.entity.CourseLikeId;
 import com.withgahyo.domain.course.entity.CourseMustVisitPlace;
+import com.withgahyo.domain.course.entity.CourseScheduleItem;
 import com.withgahyo.domain.course.entity.CourseStatus;
 import com.withgahyo.domain.course.entity.TransportMode;
 import com.withgahyo.domain.course.exception.CourseErrorCode;
@@ -38,6 +39,7 @@ import com.withgahyo.domain.place.repository.RegionRepository;
 import com.withgahyo.domain.user.entity.User;
 import com.withgahyo.domain.user.repository.UserRepository;
 import com.withgahyo.global.exception.BusinessException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -472,6 +474,118 @@ class CourseServiceTest {
 
 		assertThat(course.getDeletedAt()).isNotNull();
 		assertThat(course.getStatus()).isEqualTo(CourseStatus.CANCELED);
+	}
+
+	@Test
+	void getCourseDetail_returnsPlaceImageUrlAndAddress_whenPlaceHasThem() {
+		User creator = userWithId(1L, "creator", "작성자", null);
+		Region region = Region.create("3", "1", "대전광역시 동구");
+		Course course = courseWithId(301L, creator, region, "대전 효도 여행");
+		Place place = placeWithId(
+			501L,
+			region,
+			"한밭수목원",
+			"대전광역시 서구 둔산대로 169",
+			"https://example.com/hanbat.jpg"
+		);
+
+		stubCourseDetailPrerequisites(course);
+		given(courseScheduleItemRepository.findAllByCourseId(301L))
+			.willReturn(List.of(scheduleItem(course, place, 1, 1)));
+
+		CourseDetailResponse response = courseService.getCourseDetail(1L, 301L);
+
+		CourseDetailResponse.PlaceResponse placeResponse = response.days().get(0).places().get(0);
+		assertThat(placeResponse.placeId()).isEqualTo(501L);
+		assertThat(placeResponse.imageUrl()).isEqualTo("https://example.com/hanbat.jpg");
+		assertThat(placeResponse.address()).isEqualTo("대전광역시 서구 둔산대로 169");
+	}
+
+	@Test
+	void getCourseDetail_returnsNullImageUrl_whenPlaceHasNoImage() {
+		// Kakao Local API 기반 FOOD/CAFE 장소는 imageUrl 이 없다. null 을 빈 문자열로 바꾸지 않고 그대로 내려야 한다.
+		User creator = userWithId(1L, "creator", "작성자", null);
+		Region region = Region.create("3", "1", "대전광역시 동구");
+		Course course = courseWithId(301L, creator, region, "대전 효도 여행");
+		Place place = placeWithId(502L, region, "창평국밥", "대전광역시 중구 대흥동 1-1", null);
+
+		stubCourseDetailPrerequisites(course);
+		given(courseScheduleItemRepository.findAllByCourseId(301L))
+			.willReturn(List.of(scheduleItem(course, place, 1, 1)));
+
+		CourseDetailResponse response = courseService.getCourseDetail(1L, 301L);
+
+		CourseDetailResponse.PlaceResponse placeResponse = response.days().get(0).places().get(0);
+		assertThat(placeResponse.imageUrl()).isNull();
+		assertThat(placeResponse.address()).isEqualTo("대전광역시 중구 대흥동 1-1");
+	}
+
+	@Test
+	void getCourseDetail_returnsNullAddress_whenPlaceHasNoAddress() {
+		User creator = userWithId(1L, "creator", "작성자", null);
+		Region region = Region.create("3", "1", "대전광역시 동구");
+		Course course = courseWithId(301L, creator, region, "대전 효도 여행");
+		Place place = placeWithId(503L, region, "주소없는장소", null, null);
+
+		stubCourseDetailPrerequisites(course);
+		given(courseScheduleItemRepository.findAllByCourseId(301L))
+			.willReturn(List.of(scheduleItem(course, place, 1, 1)));
+
+		CourseDetailResponse response = courseService.getCourseDetail(1L, 301L);
+
+		CourseDetailResponse.PlaceResponse placeResponse = response.days().get(0).places().get(0);
+		assertThat(placeResponse.address()).isNull();
+		assertThat(placeResponse.imageUrl()).isNull();
+		// 기존 필드가 그대로 유지되는지 함께 확인한다.
+		assertThat(placeResponse.name()).isEqualTo("주소없는장소");
+		assertThat(placeResponse.order()).isEqualTo(1);
+	}
+
+	private void stubCourseDetailPrerequisites(Course course) {
+		Long courseId = course.getCourseId();
+		given(courseRepository.findActiveById(courseId)).willReturn(Optional.of(course));
+		given(courseParticipantRepository.findAllByCourseId(courseId)).willReturn(List.of());
+		given(courseKeywordRepository.findAllByCourseId(courseId)).willReturn(List.of());
+		given(courseLikeRepository.existsById(CourseLikeId.of(1L, courseId))).willReturn(false);
+		given(courseLikeRepository.countByCourseCourseId(courseId)).willReturn(0L);
+		given(albumRepository.findFirstByCourseCourseIdOrderByAlbumIdAsc(courseId)).willReturn(Optional.empty());
+		given(placeAccessibilityRepository.findAllByPlaceIdsAndStatus(
+			org.mockito.ArgumentMatchers.anyList(),
+			org.mockito.ArgumentMatchers.any()
+		)).willReturn(List.of());
+	}
+
+	private Place placeWithId(Long placeId, Region region, String name, String address, String imageUrl) {
+		Place place = Place.create(
+			"CONTENT-" + placeId,
+			"12",
+			"KAKAO",
+			"NATURE",
+			region,
+			name,
+			address,
+			new BigDecimal("36.366"),
+			new BigDecimal("127.388"),
+			imageUrl
+		);
+		ReflectionTestUtils.setField(place, "placeId", placeId);
+		return place;
+	}
+
+	private CourseScheduleItem scheduleItem(Course course, Place place, int dayNumber, int visitOrder) {
+		CourseScheduleItem item = CourseScheduleItem.create(
+			course,
+			place,
+			dayNumber,
+			visitOrder,
+			null,
+			null,
+			null,
+			null,
+			null
+		);
+		ReflectionTestUtils.setField(item, "scheduleItemId", 9000L + visitOrder);
+		return item;
 	}
 
 	private User userWithId(Long userId, String providerUserId, String nickname, String profileImageUrl) {

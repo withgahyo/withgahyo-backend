@@ -343,6 +343,8 @@ public class CourseService {
 			place.getPlaceId(),
 			place.getName(),
 			place.getCat1(),
+			place.getAddress(),
+			place.getImageUrl(),
 			item.getArrivalTime(),
 			item.getDepartureTime(),
 			place.getLatitude(),
