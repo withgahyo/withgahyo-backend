@@ -429,7 +429,25 @@ public class RecommendationService {
 		if (placeById.size() != placeIds.size()) {
 			throw new RecommendationAiException("AI 추천 장소를 찾을 수 없습니다.");
 		}
+		backfillMissingImageUrls(items, placeById);
 		return placeById;
+	}
+
+	// 기존 placeId로 재사용하는 장소는 갱신 대상이 아니지만, Kakao 검색으로 먼저 저장되어 imageUrl이 비어 있는 경우가 있다.
+	// AI 응답에 유효한 imageUrl이 있으면 그 값만 보강한다(이미 이미지가 있으면 유지, 다른 필드는 건드리지 않음).
+	private void backfillMissingImageUrls(
+		List<AiRecommendationGenerateResponse.ItemResponse> items,
+		Map<Long, Place> placeById
+	) {
+		for (AiRecommendationGenerateResponse.ItemResponse item : items) {
+			if (item.placeId() == null || !StringUtils.hasText(item.imageUrl())) {
+				continue;
+			}
+			Place place = placeById.get(item.placeId());
+			if (place != null) {
+				place.backfillImageUrlIfBlank(item.imageUrl());
+			}
+		}
 	}
 
 	// placeId가 없는 item은 AI가 Spring place 테이블에 아직 없는 새 장소를 외부 식별 정보로 내려준 것이다.

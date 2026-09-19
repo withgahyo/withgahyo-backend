@@ -329,6 +329,124 @@ class RecommendationServiceTest {
 		verify(placeUpsertWriter, never()).upsertAll(anyList());
 	}
 
+	@Test
+	void startGeneration_backfillsPlaceImageUrl_whenExistingPlaceImageIsNullAndAiImageExists() {
+		Place existingPlace = placeWithId(501L);
+		ReflectionTestUtils.setField(existingPlace, "imageUrl", null);
+
+		runStartGenerationWithKnownPlace(existingPlace, "https://tour.example.com/new.jpg");
+
+		assertThat(existingPlace.getImageUrl()).isEqualTo("https://tour.example.com/new.jpg");
+	}
+
+	@Test
+	void startGeneration_keepsExistingPlaceImageUrl_whenBothExistingAndAiImageExist() {
+		Place existingPlace = placeWithId(501L);
+		ReflectionTestUtils.setField(existingPlace, "imageUrl", "https://example.com/existing.jpg");
+
+		runStartGenerationWithKnownPlace(existingPlace, "https://tour.example.com/new.jpg");
+
+		assertThat(existingPlace.getImageUrl()).isEqualTo("https://example.com/existing.jpg");
+	}
+
+	@Test
+	void startGeneration_keepsExistingPlaceImageUrl_whenAiImageIsNull() {
+		Place existingPlace = placeWithId(501L);
+		ReflectionTestUtils.setField(existingPlace, "imageUrl", "https://example.com/existing.jpg");
+
+		runStartGenerationWithKnownPlace(existingPlace, null);
+
+		assertThat(existingPlace.getImageUrl()).isEqualTo("https://example.com/existing.jpg");
+	}
+
+	@Test
+	void startGeneration_keepsNullPlaceImageUrl_whenBothExistingAndAiImageAreNull() {
+		Place existingPlace = placeWithId(501L);
+		ReflectionTestUtils.setField(existingPlace, "imageUrl", null);
+
+		runStartGenerationWithKnownPlace(existingPlace, null);
+
+		assertThat(existingPlace.getImageUrl()).isNull();
+	}
+
+	@Test
+	void startGeneration_backfillsPlaceImageUrl_whenExistingPlaceImageIsBlank() {
+		// DB에 빈 문자열이 저장된 장소도 null 과 동일하게 "이미지 없음"으로 보고 보강한다.
+		Place existingPlace = placeWithId(501L);
+		ReflectionTestUtils.setField(existingPlace, "imageUrl", "   ");
+
+		runStartGenerationWithKnownPlace(existingPlace, "https://tour.example.com/new.jpg");
+
+		assertThat(existingPlace.getImageUrl()).isEqualTo("https://tour.example.com/new.jpg");
+	}
+
+	@Test
+	void startGeneration_keepsExistingPlaceImageUrl_whenAiImageIsBlank() {
+		Place existingPlace = placeWithId(501L);
+		ReflectionTestUtils.setField(existingPlace, "imageUrl", "https://example.com/existing.jpg");
+
+		runStartGenerationWithKnownPlace(existingPlace, "   ");
+
+		assertThat(existingPlace.getImageUrl()).isEqualTo("https://example.com/existing.jpg");
+	}
+
+	@Test
+	void startGeneration_keepsNullPlaceImageUrl_whenAiImageIsBlank() {
+		Place existingPlace = placeWithId(501L);
+		ReflectionTestUtils.setField(existingPlace, "imageUrl", null);
+
+		runStartGenerationWithKnownPlace(existingPlace, "   ");
+
+		assertThat(existingPlace.getImageUrl()).isNull();
+	}
+
+	@Test
+	void startGeneration_doesNotChangeOtherPlaceFields_whenBackfillingImageUrl() {
+		// imageUrl 보강이 기존 장소의 다른 정보를 덮어쓰지 않아야 한다.
+		Place existingPlace = placeWithId(501L);
+		ReflectionTestUtils.setField(existingPlace, "imageUrl", null);
+		ReflectionTestUtils.setField(existingPlace, "name", "기존이름");
+		ReflectionTestUtils.setField(existingPlace, "address", "기존주소");
+		ReflectionTestUtils.setField(existingPlace, "cat1", "기존카테고리");
+
+		runStartGenerationWithKnownPlace(existingPlace, "https://tour.example.com/new.jpg");
+
+		assertThat(existingPlace.getImageUrl()).isEqualTo("https://tour.example.com/new.jpg");
+		assertThat(existingPlace.getName()).isEqualTo("기존이름");
+		assertThat(existingPlace.getAddress()).isEqualTo("기존주소");
+		assertThat(existingPlace.getCat1()).isEqualTo("기존카테고리");
+		assertThat(existingPlace.getContentId()).isEqualTo("126508");
+		assertThat(existingPlace.getContentTypeId()).isEqualTo("12");
+		assertThat(existingPlace.getSource()).isEqualTo("TOUR_API");
+		assertThat(existingPlace.getLatitude()).isEqualByComparingTo("36.366");
+		assertThat(existingPlace.getLongitude()).isEqualByComparingTo("127.388");
+		// 기존 장소는 신규 등록 경로(upsert)를 타지 않는다.
+		verify(placeUpsertWriter, never()).upsertAll(anyList());
+	}
+
+	private void runStartGenerationWithKnownPlace(Place existingPlace, String aiImageUrl) {
+		Course course = courseWithId(456L);
+		RecommendationJob savedJob = RecommendationJob.createPending(course);
+		ReflectionTestUtils.setField(savedJob, "recommendationJobId", 789L);
+		AiRecommendationGenerateResponse aiResponse = singleCandidateResponse(
+			789L,
+			456L,
+			itemWithPlaceId(existingPlace.getPlaceId(), aiImageUrl)
+		);
+
+		stubStartGenerationPrerequisites(course, savedJob, aiResponse);
+		given(recommendationCandidateRepository.save(any(RecommendationCandidate.class)))
+			.willAnswer(invocation -> invocation.getArgument(0));
+		given(placeRepository.findAllByPlaceIdIn(List.of(existingPlace.getPlaceId())))
+			.willReturn(List.of(existingPlace));
+
+		StartRecommendationResponse response = recommendationService.startGeneration(
+			1L, 456L, new StartRecommendationRequest(null, List.of(), null)
+		);
+
+		assertThat(response.status()).isEqualTo(RecommendationJobStatus.COMPLETED);
+	}
+
 	private void stubStartGenerationPrerequisites(
 		Course course,
 		RecommendationJob savedJob,
@@ -457,6 +575,52 @@ class RecommendationServiceTest {
 		assertThat(response.days()).hasSize(1);
 		assertThat(response.days().get(0).places().get(0).placeId()).isEqualTo(501L);
 		assertThat(response.days().get(0).places().get(0).transportToNext().mode()).isEqualTo(TransportMode.CAR);
+	}
+
+	@Test
+	void getCandidateDetail_returnsPlaceImageUrlAndAddress() {
+		Course course = courseWithId(456L);
+		RecommendationJob job = completedJobWithId(789L, course);
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+		RecommendationCandidateItem item = candidateItemWithId(2001L, candidate, placeWithId(501L), 1, 1);
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+		given(recommendationCandidateRepository.findByRecommendationCandidateIdAndRecommendationJobRecommendationJobId(1001L, 789L))
+			.willReturn(Optional.of(candidate));
+		given(recommendationCandidateItemRepository.findAllByRecommendationCandidateRecommendationCandidateIdOrderByDayNumberAscVisitOrderAsc(1001L))
+			.willReturn(List.of(item));
+
+		RecommendationCandidateDetailResponse response = recommendationService.getCandidateDetail(1L, 789L, 1001L);
+
+		RecommendationCandidateDetailResponse.PlaceResponse placeResponse = response.days().get(0).places().get(0);
+		assertThat(placeResponse.imageUrl()).isEqualTo("https://example.com/place.jpg");
+		assertThat(placeResponse.address()).isEqualTo("대전광역시 서구 둔산대로 169");
+	}
+
+	@Test
+	void getCandidateDetail_returnsNullImageUrl_whenPlaceHasNoImage() {
+		// Kakao 기반 FOOD/CAFE 장소는 imageUrl 이 없다. null 이어도 응답이 정상 생성되어야 한다.
+		Course course = courseWithId(456L);
+		RecommendationJob job = completedJobWithId(789L, course);
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+		Place placeWithoutImage = placeWithId(502L, "CONTENT-502", "39");
+		ReflectionTestUtils.setField(placeWithoutImage, "imageUrl", null);
+		RecommendationCandidateItem item = candidateItemWithId(2002L, candidate, placeWithoutImage, 1, 1);
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+		given(recommendationCandidateRepository.findByRecommendationCandidateIdAndRecommendationJobRecommendationJobId(1001L, 789L))
+			.willReturn(Optional.of(candidate));
+		given(recommendationCandidateItemRepository.findAllByRecommendationCandidateRecommendationCandidateIdOrderByDayNumberAscVisitOrderAsc(1001L))
+			.willReturn(List.of(item));
+
+		RecommendationCandidateDetailResponse response = recommendationService.getCandidateDetail(1L, 789L, 1001L);
+
+		RecommendationCandidateDetailResponse.PlaceResponse placeResponse = response.days().get(0).places().get(0);
+		assertThat(placeResponse.imageUrl()).isNull();
+		assertThat(placeResponse.address()).isEqualTo("대전광역시 서구 둔산대로 169");
+		// 기존 필드는 그대로 유지된다.
+		assertThat(placeResponse.placeId()).isEqualTo(502L);
+		assertThat(placeResponse.name()).isEqualTo("한밭수목원");
 	}
 
 	@Test
@@ -647,10 +811,14 @@ class RecommendationServiceTest {
 	}
 
 	private AiRecommendationGenerateResponse.ItemResponse itemWithPlaceId(Long placeId) {
+		return itemWithPlaceId(placeId, null);
+	}
+
+	private AiRecommendationGenerateResponse.ItemResponse itemWithPlaceId(Long placeId, String imageUrl) {
 		return new AiRecommendationGenerateResponse.ItemResponse(
 			1, "한밭수목원", "TOUR", "MOCK", placeId,
 			null, "126508", "12", "대전광역시 서구 둔산대로 169", "3", "1",
-			new BigDecimal("36.366"), new BigDecimal("127.388"), null,
+			new BigDecimal("36.366"), new BigDecimal("127.388"), imageUrl,
 			70, List.of("휴식 공간 필요")
 		);
 	}
