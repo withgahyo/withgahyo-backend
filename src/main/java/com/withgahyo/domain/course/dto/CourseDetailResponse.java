@@ -52,6 +52,8 @@ public record CourseDetailResponse(
 		Long placeId,
 		String name,
 		String category,
+		String address,
+		String imageUrl,
 		LocalTime arrivalTime,
 		LocalTime departureTime,
 		BigDecimal latitude,

@@ -19,6 +19,7 @@ public record InternalPlaceBatchGetResponse(
 	public record PlaceResponse(
 		Long placeId,
 		String name,
+		String category,
 		BigDecimal latitude,
 		BigDecimal longitude,
 		String source,
@@ -26,12 +27,14 @@ public record InternalPlaceBatchGetResponse(
 		String contentTypeId,
 		String address,
 		String areaCode,
-		String sigunguCode
+		String sigunguCode,
+		String imageUrl
 	) {
 		private static PlaceResponse from(Place place) {
 			return new PlaceResponse(
 				place.getPlaceId(),
 				place.getName(),
+				place.getCat1(),
 				place.getLatitude(),
 				place.getLongitude(),
 				place.getSource(),
@@ -39,7 +42,8 @@ public record InternalPlaceBatchGetResponse(
 				place.getContentTypeId(),
 				place.getAddress(),
 				place.getRegion().getAreaCode(),
-				place.getRegion().getSigunguCode()
+				place.getRegion().getSigunguCode(),
+				place.getImageUrl()
 			);
 		}
 	}
