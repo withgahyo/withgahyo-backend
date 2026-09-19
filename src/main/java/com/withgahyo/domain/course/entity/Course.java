@@ -20,6 +20,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -106,6 +107,14 @@ public class Course {
 
 	public boolean isDeleted() {
 		return deletedAt != null;
+	}
+
+	// CourseDetailResponse/HomeResponse가 같은 의미의 "여행까지 남은 일수"를 중복 계산하지 않도록
+	// 공통 계산 로직을 엔티티에 둔다. 오늘(LocalDate.now()) 기준 startDate까지의 signed day
+	// difference다 — 미래는 양수, 오늘은 0, 과거는 음수. 과거를 0으로 clamp하면 Frontend가
+	// 지난 여행을 D-Day로 착각하고 정렬도 깨지므로 Math.max(0, ...) 같은 보정을 두지 않는다.
+	public long daysUntilTrip() {
+		return ChronoUnit.DAYS.between(LocalDate.now(), startDate);
 	}
 
 	public boolean isEditable() {
