@@ -164,6 +164,7 @@ public class RecommendationService {
 	// 후보 대표 이미지는 여행 순서(dayNumber, visitOrder)상 가장 먼저 나오는 유효한 Place.imageUrl 이다.
 	// Place.imageUrl 은 이후 보강될 수 있어 저장하지 않고 조회 시점마다 계산하며,
 	// 후보 수와 무관하게 조인 조회 한 번으로 모든 후보의 대표 이미지를 구한다.
+	// 계산 자체는 RecommendationCandidateThumbnails로 추출해 HomeService(alternativeCandidates)와 공유한다.
 	private Map<Long, String> findThumbnailImageUrls(List<RecommendationCandidate> candidates) {
 		if (candidates.isEmpty()) {
 			return Map.of();
@@ -172,20 +173,9 @@ public class RecommendationService {
 		List<Long> candidateIds = candidates.stream()
 			.map(RecommendationCandidate::getRecommendationCandidateId)
 			.toList();
-		Map<Long, String> thumbnailByCandidateId = new LinkedHashMap<>();
-		for (RecommendationCandidateItem item :
-			recommendationCandidateItemRepository.findAllWithPlaceByRecommendationCandidateIdIn(candidateIds)) {
-			String imageUrl = item.getPlace().getImageUrl();
-			if (!StringUtils.hasText(imageUrl)) {
-				continue;
-			}
-			// 조회 결과가 이미 여행 순서로 정렬되어 있으므로 후보별 첫 유효 이미지만 남긴다.
-			thumbnailByCandidateId.putIfAbsent(
-				item.getRecommendationCandidate().getRecommendationCandidateId(),
-				imageUrl
-			);
-		}
-		return thumbnailByCandidateId;
+		List<RecommendationCandidateItem> items =
+			recommendationCandidateItemRepository.findAllWithPlaceByRecommendationCandidateIdIn(candidateIds);
+		return RecommendationCandidateThumbnails.firstImageUrlByCandidateId(items);
 	}
 
 	@Transactional(readOnly = true)

@@ -39,7 +39,6 @@ import com.withgahyo.global.exception.BusinessException;
 import com.withgahyo.global.exception.code.ErrorCode;
 import com.withgahyo.global.exception.code.SecurityErrorCode;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -148,7 +147,7 @@ public class CourseService {
 			course.getStatus(),
 			course.getStartDate(),
 			course.getEndDate(),
-			daysUntilTrip(course),
+			course.daysUntilTrip(),
 			new CourseDetailResponse.RegionResponse(
 				course.getRegion().getAreaCode(),
 				course.getRegion().getSigunguCode(),
@@ -289,10 +288,6 @@ public class CourseService {
 			return;
 		}
 		throw new BusinessException(CourseErrorCode.COURSE_ACCESS_DENIED);
-	}
-
-	private long daysUntilTrip(Course course) {
-		return Math.max(0, ChronoUnit.DAYS.between(LocalDate.now(), course.getStartDate()));
 	}
 
 	private Map<Long, List<String>> findAccessibilitySummaries(List<CourseScheduleItem> scheduleItems) {
