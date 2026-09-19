@@ -206,6 +206,19 @@ class HomeServiceTest {
 		assertThat(response.familyCourses().get(0).daysUntilTrip()).isEqualTo(course.daysUntilTrip());
 	}
 
+	@Test
+	void getHome_returnsNegativeDaysUntilTrip_whenStartDateIsInThePast() {
+		// 회귀 방지: startDate가 지난 UPCOMING 코스도 Home에는 노출되며(status만으로 필터링),
+		// daysUntilTrip은 0으로 보정되지 않고 signed 값(음수)이어야 한다.
+		Course course = courseWithId(301L, "지난 여행", LocalDate.now().minusDays(13));
+		stubBaseCourse(course);
+		stubNoAlternatives(course);
+
+		HomeResponse response = homeService.getHome(1L);
+
+		assertThat(response.familyCourses().get(0).daysUntilTrip()).isEqualTo(-13L);
+	}
+
 	// ---- alternativeCandidates ----
 
 	@Test
