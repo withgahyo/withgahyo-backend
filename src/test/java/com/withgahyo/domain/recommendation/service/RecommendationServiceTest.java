@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -554,6 +555,171 @@ class RecommendationServiceTest {
 		assertThat(response.candidates().get(0).candidateId()).isEqualTo(1001L);
 		assertThat(response.candidates().get(0).summary()).isEqualTo("이동 부담을 줄인 코스입니다.");
 		assertThat(response.candidates().get(0).totalDistanceKm()).isEqualByComparingTo("12.4");
+	}
+
+	@Test
+	void getCandidates_usesFirstPlaceImageUrl_asThumbnail() {
+		RecommendationJob job = completedJobWithId(789L, courseWithId(456L));
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+
+		stubCandidateThumbnailQuery(job, List.of(candidate), List.of(
+			candidateItemWithId(2001L, candidate, placeWithImageUrl(501L, "https://example.com/first.jpg"), 1, 1),
+			candidateItemWithId(2002L, candidate, placeWithImageUrl(502L, "https://example.com/second.jpg"), 1, 2)
+		));
+
+		RecommendationCandidatesResponse response = recommendationService.getCandidates(1L, 789L);
+
+		assertThat(response.candidates().get(0).thumbnailImageUrl()).isEqualTo("https://example.com/first.jpg");
+	}
+
+	@Test
+	void getCandidates_skipsNullImageUrl_andUsesNextPlaceImage() {
+		RecommendationJob job = completedJobWithId(789L, courseWithId(456L));
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+
+		stubCandidateThumbnailQuery(job, List.of(candidate), List.of(
+			candidateItemWithId(2001L, candidate, placeWithImageUrl(501L, null), 1, 1),
+			candidateItemWithId(2002L, candidate, placeWithImageUrl(502L, "https://example.com/second.jpg"), 1, 2)
+		));
+
+		RecommendationCandidatesResponse response = recommendationService.getCandidates(1L, 789L);
+
+		assertThat(response.candidates().get(0).thumbnailImageUrl()).isEqualTo("https://example.com/second.jpg");
+	}
+
+	@Test
+	void getCandidates_usesNextDayImage_whenFirstDayHasNoImage() {
+		RecommendationJob job = completedJobWithId(789L, courseWithId(456L));
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+
+		// 조회 쿼리는 dayNumber, visitOrder 순으로 정렬해서 돌려준다.
+		stubCandidateThumbnailQuery(job, List.of(candidate), List.of(
+			candidateItemWithId(2001L, candidate, placeWithImageUrl(501L, null), 1, 1),
+			candidateItemWithId(2002L, candidate, placeWithImageUrl(502L, null), 1, 2),
+			candidateItemWithId(2003L, candidate, placeWithImageUrl(503L, "https://example.com/day2.jpg"), 2, 1)
+		));
+
+		RecommendationCandidatesResponse response = recommendationService.getCandidates(1L, 789L);
+
+		assertThat(response.candidates().get(0).thumbnailImageUrl()).isEqualTo("https://example.com/day2.jpg");
+	}
+
+	@Test
+	void getCandidates_returnsNullThumbnail_whenNoPlaceHasImage() {
+		RecommendationJob job = completedJobWithId(789L, courseWithId(456L));
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+
+		stubCandidateThumbnailQuery(job, List.of(candidate), List.of(
+			candidateItemWithId(2001L, candidate, placeWithImageUrl(501L, null), 1, 1),
+			candidateItemWithId(2002L, candidate, placeWithImageUrl(502L, null), 1, 2)
+		));
+
+		RecommendationCandidatesResponse response = recommendationService.getCandidates(1L, 789L);
+
+		assertThat(response.candidates().get(0).thumbnailImageUrl()).isNull();
+	}
+
+	@Test
+	void getCandidates_treatsBlankImageUrl_asMissingImage() {
+		RecommendationJob job = completedJobWithId(789L, courseWithId(456L));
+		RecommendationCandidate candidate = candidateWithId(1001L, job, 1);
+
+		stubCandidateThumbnailQuery(job, List.of(candidate), List.of(
+			candidateItemWithId(2001L, candidate, placeWithImageUrl(501L, ""), 1, 1),
+			candidateItemWithId(2002L, candidate, placeWithImageUrl(502L, "   "), 1, 2),
+			candidateItemWithId(2003L, candidate, placeWithImageUrl(503L, "https://example.com/third.jpg"), 1, 3)
+		));
+
+		RecommendationCandidatesResponse response = recommendationService.getCandidates(1L, 789L);
+
+		assertThat(response.candidates().get(0).thumbnailImageUrl()).isEqualTo("https://example.com/third.jpg");
+	}
+
+	@Test
+	void getCandidates_computesThumbnailPerCandidate_whenMultipleCandidatesExist() {
+		RecommendationJob job = completedJobWithId(789L, courseWithId(456L));
+		RecommendationCandidate first = candidateWithId(1001L, job, 1);
+		RecommendationCandidate second = candidateWithId(1002L, job, 2);
+		RecommendationCandidate third = candidateWithId(1003L, job, 3);
+
+		stubCandidateThumbnailQuery(job, List.of(first, second, third), List.of(
+			candidateItemWithId(2001L, first, placeWithImageUrl(501L, "https://example.com/a.jpg"), 1, 1),
+			candidateItemWithId(2002L, second, placeWithImageUrl(502L, null), 1, 1),
+			candidateItemWithId(2003L, third, placeWithImageUrl(503L, null), 1, 1),
+			candidateItemWithId(2004L, second, placeWithImageUrl(504L, "https://example.com/b.jpg"), 1, 2),
+			candidateItemWithId(2005L, third, placeWithImageUrl(505L, null), 1, 2)
+		));
+
+		RecommendationCandidatesResponse response = recommendationService.getCandidates(1L, 789L);
+
+		assertThat(response.candidates()).hasSize(3);
+		assertThat(response.candidates().get(0).thumbnailImageUrl()).isEqualTo("https://example.com/a.jpg");
+		assertThat(response.candidates().get(1).thumbnailImageUrl()).isEqualTo("https://example.com/b.jpg");
+		assertThat(response.candidates().get(2).thumbnailImageUrl()).isNull();
+	}
+
+	@Test
+	void getCandidates_returnsEmptyResponse_withoutQueryingItems_whenNoCandidates() {
+		RecommendationJob job = completedJobWithId(789L, courseWithId(456L));
+
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(789L)).willReturn(Optional.of(job));
+		given(recommendationCandidateRepository.findAllByRecommendationJobRecommendationJobIdOrderByRankAsc(789L))
+			.willReturn(List.of());
+
+		RecommendationCandidatesResponse response = recommendationService.getCandidates(1L, 789L);
+
+		assertThat(response.generationId()).isEqualTo(789L);
+		assertThat(response.courseId()).isEqualTo(456L);
+		assertThat(response.selectedCandidateId()).isNull();
+		assertThat(response.candidates()).isEmpty();
+		// 후보가 없으면 IN () 쿼리가 나가지 않도록 item 조회를 생략한다.
+		verify(recommendationCandidateItemRepository, never())
+			.findAllWithPlaceByRecommendationCandidateIdIn(anyList());
+	}
+
+	@Test
+	void getCandidates_queriesCandidateItemsOnce_regardlessOfCandidateCount() {
+		RecommendationJob job = completedJobWithId(789L, courseWithId(456L));
+		RecommendationCandidate first = candidateWithId(1001L, job, 1);
+		RecommendationCandidate second = candidateWithId(1002L, job, 2);
+		RecommendationCandidate third = candidateWithId(1003L, job, 3);
+
+		stubCandidateThumbnailQuery(job, List.of(first, second, third), List.of(
+			candidateItemWithId(2001L, first, placeWithImageUrl(501L, "https://example.com/a.jpg"), 1, 1),
+			candidateItemWithId(2002L, second, placeWithImageUrl(502L, "https://example.com/b.jpg"), 1, 1),
+			candidateItemWithId(2003L, third, placeWithImageUrl(503L, "https://example.com/c.jpg"), 1, 1)
+		));
+
+		recommendationService.getCandidates(1L, 789L);
+
+		// 후보가 3개여도 item + place 조회는 한 번만 발생해야 한다(N+1 방지).
+		verify(recommendationCandidateItemRepository, org.mockito.Mockito.times(1))
+			.findAllWithPlaceByRecommendationCandidateIdIn(List.of(1001L, 1002L, 1003L));
+		verify(recommendationCandidateItemRepository, never())
+			.findAllByRecommendationCandidateRecommendationCandidateIdOrderByDayNumberAscVisitOrderAsc(anyLong());
+	}
+
+	private void stubCandidateThumbnailQuery(
+		RecommendationJob job,
+		List<RecommendationCandidate> candidates,
+		List<RecommendationCandidateItem> items
+	) {
+		List<Long> candidateIds = candidates.stream()
+			.map(RecommendationCandidate::getRecommendationCandidateId)
+			.toList();
+		given(recommendationJobRepository.findWithCourseByRecommendationJobId(job.getRecommendationJobId()))
+			.willReturn(Optional.of(job));
+		given(recommendationCandidateRepository.findAllByRecommendationJobRecommendationJobIdOrderByRankAsc(
+			job.getRecommendationJobId()
+		)).willReturn(candidates);
+		given(recommendationCandidateItemRepository.findAllWithPlaceByRecommendationCandidateIdIn(candidateIds))
+			.willReturn(items);
+	}
+
+	private Place placeWithImageUrl(Long placeId, String imageUrl) {
+		Place place = placeWithId(placeId, "CONTENT-" + placeId, "12");
+		ReflectionTestUtils.setField(place, "imageUrl", imageUrl);
+		return place;
 	}
 
 	@Test
