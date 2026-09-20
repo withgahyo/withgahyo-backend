@@ -59,4 +59,4 @@ app:
     access-key-id: ${R2_ACCESS_KEY_ID:local-r2-access-key}
     secret-access-key: ${R2_SECRET_ACCESS_KEY:local-r2-secret-key}
     bucket: ${R2_BUCKET_NAME:withgahyo-local}
-    public-base-url: ${R2_PUBLIC_BASE_URL:https://images.withgahyo.com}
+    public-base-url: ${R2_PUBLIC_BASE_URL:https://images.withgahyo.site}
