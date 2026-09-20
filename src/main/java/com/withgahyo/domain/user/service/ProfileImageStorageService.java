@@ -3,61 +3,64 @@ package com.withgahyo.domain.user.service;
 import com.withgahyo.domain.user.exception.UserErrorCode;
 import com.withgahyo.global.exception.BusinessException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Service
 public class ProfileImageStorageService {
 
 	private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
-	private final Path storagePath;
-	private final String publicUrlPrefix;
+	private final S3Client r2Client;
+	private final String bucket;
+	private final String keyPrefix;
+	private final String publicBaseUrl;
 
-	@Autowired
 	public ProfileImageStorageService(
-		@Value("${app.upload.profile-images-dir:uploads/profile-images}") String storagePath,
-		@Value("${app.upload.profile-images-url-prefix:/uploads/profile-images}") String publicUrlPrefix
+		S3Client r2Client,
+		@Value("${app.r2.bucket}") String bucket,
+		@Value("${app.upload.profile-images-key-prefix:profile-images}") String keyPrefix,
+		@Value("${app.r2.public-base-url}") String publicBaseUrl
 	) {
-		this(Path.of(storagePath), publicUrlPrefix);
-	}
-
-	ProfileImageStorageService(Path storagePath, String publicUrlPrefix) {
-		this.storagePath = storagePath.toAbsolutePath().normalize();
-		this.publicUrlPrefix = publicUrlPrefix.endsWith("/")
-			? publicUrlPrefix.substring(0, publicUrlPrefix.length() - 1)
-			: publicUrlPrefix;
+		this.r2Client = r2Client;
+		this.bucket = bucket;
+		this.keyPrefix = trimTrailingSlash(keyPrefix);
+		this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
 	}
 
 	public String store(Long userId, MultipartFile file) {
 		validateImage(file);
 
 		String extension = resolveExtension(file);
-		String fileName = "%d-%s%s".formatted(userId, UUID.randomUUID(), extension);
-		Path targetPath = storagePath.resolve(fileName).normalize();
-		if (!targetPath.startsWith(storagePath)) {
-			throw new BusinessException(UserErrorCode.INVALID_PROFILE_IMAGE);
-		}
+		String key = "%s/%d-%s%s".formatted(keyPrefix, userId, UUID.randomUUID(), extension);
 
 		try {
-			Files.createDirectories(storagePath);
-			try (InputStream inputStream = file.getInputStream()) {
-				Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
-			}
-		} catch (IOException exception) {
+			r2Client.putObject(
+				PutObjectRequest.builder()
+					.bucket(bucket)
+					.key(key)
+					.contentType(file.getContentType())
+					.contentLength(file.getSize())
+					.build(),
+				RequestBody.fromInputStream(file.getInputStream(), file.getSize())
+			);
+		} catch (IOException | S3Exception exception) {
 			throw new BusinessException(UserErrorCode.PROFILE_IMAGE_UPLOAD_FAILED);
 		}
 
-		return publicUrlPrefix + "/" + fileName;
+		return publicBaseUrl + "/" + key;
+	}
+
+	private String trimTrailingSlash(String value) {
+		return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
 	}
 
 	private void validateImage(MultipartFile file) {

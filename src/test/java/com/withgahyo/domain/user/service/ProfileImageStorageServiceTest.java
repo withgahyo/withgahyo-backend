@@ -2,23 +2,31 @@ package com.withgahyo.domain.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 
 import com.withgahyo.domain.user.exception.UserErrorCode;
 import com.withgahyo.global.exception.BusinessException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+@ExtendWith(MockitoExtension.class)
 class ProfileImageStorageServiceTest {
 
-	@TempDir
-	Path tempDir;
+	@Mock
+	private S3Client r2Client;
 
 	@Test
-	void store_success_savesImageAndReturnsPublicUrl() throws Exception {
-		ProfileImageStorageService storageService = new ProfileImageStorageService(tempDir, "/uploads/profile-images");
+	void store_success_uploadsToR2AndReturnsPublicUrl() {
+		ProfileImageStorageService storageService = new ProfileImageStorageService(
+			r2Client, "withgahyo-bucket", "profile-images", "https://images.withgahyo.com"
+		);
 		MockMultipartFile file = new MockMultipartFile(
 			"file",
 			"profile.png",
@@ -28,14 +36,16 @@ class ProfileImageStorageServiceTest {
 
 		String profileImageUrl = storageService.store(1L, file);
 
-		assertThat(profileImageUrl).startsWith("/uploads/profile-images/1-");
+		assertThat(profileImageUrl).startsWith("https://images.withgahyo.com/profile-images/1-");
 		assertThat(profileImageUrl).endsWith(".png");
-		assertThat(Files.exists(tempDir.resolve(Path.of(profileImageUrl).getFileName()))).isTrue();
+		verify(r2Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 	}
 
 	@Test
 	void store_fail_whenFileIsNotImage() {
-		ProfileImageStorageService storageService = new ProfileImageStorageService(tempDir, "/uploads/profile-images");
+		ProfileImageStorageService storageService = new ProfileImageStorageService(
+			r2Client, "withgahyo-bucket", "profile-images", "https://images.withgahyo.com"
+		);
 		MockMultipartFile file = new MockMultipartFile(
 			"file",
 			"profile.txt",

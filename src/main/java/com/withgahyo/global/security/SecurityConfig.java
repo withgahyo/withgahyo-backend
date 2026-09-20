@@ -30,8 +30,7 @@ public class SecurityConfig {
 		"/api/v1/auth/login/google",
 		"/api/v1/auth/token/refresh",
 		"/api/v1/internal/places/upsert",
-		"/api/v1/internal/places/batch-get",
-		"/uploads/profile-images/**"
+		"/api/v1/internal/places/batch-get"
 	};
 
 	static String[] publicEndpoints() {

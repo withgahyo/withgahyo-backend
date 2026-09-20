@@ -35,3 +35,11 @@ auth:
     google:
       client-id: ${GOOGLE_CLIENT_ID:test-google-client-id}
       client-secret: ${GOOGLE_CLIENT_SECRET:test-google-client-secret}
+
+app:
+  r2:
+    endpoint: https://example.r2.cloudflarestorage.com
+    access-key-id: test-r2-access-key
+    secret-access-key: test-r2-secret-key
+    bucket: withgahyo-test
+    public-base-url: https://images.example.com

@@ -7,7 +7,7 @@ spring:
     default: local
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${PORT:${SERVER_PORT:8080}}
 
 springdoc:
   api-docs:
@@ -53,5 +53,10 @@ external:
 
 app:
   upload:
-    profile-images-dir: ${PROFILE_IMAGE_UPLOAD_DIR:uploads/profile-images}
-    profile-images-url-prefix: ${PROFILE_IMAGE_UPLOAD_URL_PREFIX:/uploads/profile-images}
+    profile-images-key-prefix: ${PROFILE_IMAGE_KEY_PREFIX:profile-images}
+  r2:
+    endpoint: ${R2_ENDPOINT:https://example.r2.cloudflarestorage.com}
+    access-key-id: ${R2_ACCESS_KEY_ID:local-r2-access-key}
+    secret-access-key: ${R2_SECRET_ACCESS_KEY:local-r2-secret-key}
+    bucket: ${R2_BUCKET_NAME:withgahyo-local}
+    public-base-url: ${R2_PUBLIC_BASE_URL:https://images.withgahyo.com}
