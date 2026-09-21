@@ -128,6 +128,125 @@ class CourseRepositoryTest {
 		assertThat(result.get(0).getCourseId()).isEqualTo(upcoming.getCourseId());
 	}
 
+	// ---- findUpcomingCoursesFromDateForUser (날씨 기능용: 과거 UPCOMING 코스 제외) ----
+
+	@Test
+	void findUpcomingCoursesFromDateForUser_includesCourse_whenUserIsCreator() {
+		User creator = persistUser();
+		Course upcoming = persistCourse(creator, "생성자 코스", LocalDate.now().plusDays(5));
+		upcoming.confirm();
+		entityManager.flush();
+
+		List<Course> result = courseRepository.findUpcomingCoursesFromDateForUser(creator.getUserId(), LocalDate.now());
+
+		assertThat(result).extracting(Course::getCourseId).containsExactly(upcoming.getCourseId());
+	}
+
+	@Test
+	void findUpcomingCoursesFromDateForUser_includesCourse_whenUserIsParticipant() {
+		User creator = persistUser();
+		User participant = persistUser();
+		Course upcoming = persistCourse(creator, "참여자 코스", LocalDate.now().plusDays(5));
+		upcoming.confirm();
+		entityManager.persist(CourseParticipant.create(upcoming, participant, "MOTHER"));
+		entityManager.flush();
+
+		List<Course> result =
+			courseRepository.findUpcomingCoursesFromDateForUser(participant.getUserId(), LocalDate.now());
+
+		assertThat(result).extracting(Course::getCourseId).containsExactly(upcoming.getCourseId());
+	}
+
+	@Test
+	void findUpcomingCoursesFromDateForUser_excludesDraftCourse() {
+		User creator = persistUser();
+		persistCourse(creator, "초안 코스", LocalDate.now().plusDays(5)); // confirm() 호출 안 함 -> DRAFT
+		entityManager.flush();
+
+		List<Course> result = courseRepository.findUpcomingCoursesFromDateForUser(creator.getUserId(), LocalDate.now());
+
+		assertThat(result).isEmpty();
+	}
+
+	@Test
+	void findUpcomingCoursesFromDateForUser_excludesDeletedCourse() {
+		User creator = persistUser();
+		Course deleted = persistCourse(creator, "삭제된 코스", LocalDate.now().plusDays(5));
+		deleted.confirm();
+		deleted.softDelete();
+		entityManager.flush();
+
+		List<Course> result = courseRepository.findUpcomingCoursesFromDateForUser(creator.getUserId(), LocalDate.now());
+
+		assertThat(result).isEmpty();
+	}
+
+	@Test
+	void findUpcomingCoursesFromDateForUser_excludesPastStartDate() {
+		// Home용 findUpcomingCoursesForUser와의 핵심 차이: startDate가 지난 UPCOMING 코스는
+		// 날씨 기능에서 "예정 여행"이 아니므로 제외돼야 한다.
+		User creator = persistUser();
+		Course past = persistCourse(creator, "지난 여행", LocalDate.now().minusDays(3));
+		past.confirm();
+		entityManager.flush();
+
+		List<Course> result = courseRepository.findUpcomingCoursesFromDateForUser(creator.getUserId(), LocalDate.now());
+
+		assertThat(result).isEmpty();
+	}
+
+	@Test
+	void findUpcomingCoursesFromDateForUser_includesCourse_whenStartDateIsToday() {
+		User creator = persistUser();
+		Course today = persistCourse(creator, "오늘 출발", LocalDate.now());
+		today.confirm();
+		entityManager.flush();
+
+		List<Course> result = courseRepository.findUpcomingCoursesFromDateForUser(creator.getUserId(), LocalDate.now());
+
+		assertThat(result).extracting(Course::getCourseId).containsExactly(today.getCourseId());
+	}
+
+	@Test
+	void findUpcomingCoursesFromDateForUser_selectsClosestAmongMultipleFutureCourses() {
+		User creator = persistUser();
+		Course later = persistCourse(creator, "늦은 여행", LocalDate.now().plusDays(20));
+		Course sooner = persistCourse(creator, "가까운 여행", LocalDate.now().plusDays(3));
+		later.confirm();
+		sooner.confirm();
+		entityManager.flush();
+
+		List<Course> result = courseRepository.findUpcomingCoursesFromDateForUser(creator.getUserId(), LocalDate.now());
+
+		assertThat(result.get(0).getCourseId()).isEqualTo(sooner.getCourseId());
+	}
+
+	@Test
+	void findUpcomingCoursesFromDateForUser_ordersDeterministically_whenSameStartDate() {
+		User creator = persistUser();
+		LocalDate sameDate = LocalDate.now().plusDays(7);
+		Course first = persistCourse(creator, "같은 날 코스 A", sameDate);
+		Course second = persistCourse(creator, "같은 날 코스 B", sameDate);
+		first.confirm();
+		second.confirm();
+		entityManager.flush();
+
+		List<Course> result = courseRepository.findUpcomingCoursesFromDateForUser(creator.getUserId(), LocalDate.now());
+
+		// startDate가 같으면 courseId 오름차순으로 항상 같은 순서여야 한다.
+		Long expectedFirstId = Math.min(first.getCourseId(), second.getCourseId());
+		assertThat(result.get(0).getCourseId()).isEqualTo(expectedFirstId);
+	}
+
+	@Test
+	void findUpcomingCoursesFromDateForUser_returnsEmpty_whenNoUpcomingTrip() {
+		User creator = persistUser();
+
+		List<Course> result = courseRepository.findUpcomingCoursesFromDateForUser(creator.getUserId(), LocalDate.now());
+
+		assertThat(result).isEmpty();
+	}
+
 	private User persistUser() {
 		User user = User.create("KAKAO", "home-test-" + System.nanoTime(), "홈테스터", null);
 		entityManager.persist(user);
