@@ -50,6 +50,9 @@ external:
   kakao:
     local-api-base-url: ${KAKAO_LOCAL_API_BASE_URL:https://dapi.kakao.com}
     rest-api-key: ${KAKAO_REST_API_KEY:${KAKAO_CLIENT_ID:}}
+  weather:
+    base-url: ${WEATHER_API_BASE_URL:https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0}
+    service-key: ${WEATHER_API_KEY:}
 
 app:
   upload:
