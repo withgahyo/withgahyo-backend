@@ -209,6 +209,17 @@ OAuth 앱 키와 시크릿은 백엔드 환경변수로 관리합니다.
 | API-HOME-001 | `GET` | `/api/v1/home` | 필요 | 홈 정보 조회 |
 | API-HOME-002 | `GET` | `/api/v1/courses/popular` | 필요 | 인기 코스 조회 |
 
+### WEATHER
+
+| API ID | Method | Path | 인증 | 설명 |
+| --- | --- | --- | --- | --- |
+| API-WEATHER-001 | `GET` | `/api/v1/weather/upcoming` | 필요 | 가장 가까운 예정 여행의 단기예보 조회 |
+
+- 현재 로그인 사용자가 creator 또는 participant인 `UPCOMING` 코스 중 `startDate >= today`인 가장 가까운 코스 1개만 대상으로 합니다.
+- 대표 위치는 해당 코스 확정 일정의 Day 1, visitOrder가 가장 빠른 `CourseScheduleItem`의 `Place` 좌표를 기상청 격자(nx/ny)로 변환해 사용합니다(Region에는 좌표가 없어 사용하지 않음).
+- 기상청 단기예보(getVilageFcst)만 사용하며, 예보 범위 밖 날짜는 임의로 만들어내지 않고 `dailyForecasts`에서 제외합니다. 여행 전체/일부가 예보 범위인지, 예정 여행이 없는지, 위치를 못 찾았는지, 외부 API 오류인지는 `status`로 구분합니다.
+- 날씨 데이터는 DB에 저장하지 않고 매 요청마다 조회합니다.
+
 ### CRS
 
 | API ID | Method | Path | 인증 | 설명 |
@@ -491,6 +502,7 @@ Response:
 | ONB | `domain.onboarding`, `domain.user`, `domain.family` |
 | FAM | `domain.family`, `domain.user` |
 | HOME | `domain.home` |
+| WEATHER | `domain.weather`, `infra.weather` |
 | CRS | `domain.course`, `domain.place`, `domain.family` |
 | REC | `domain.recommendation`, `infra.ai` |
 | INTERNAL | `domain.place` |
