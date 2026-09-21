@@ -5,6 +5,8 @@ import com.withgahyo.global.exception.code.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ErrorResponse> handleBusinessException(
@@ -63,7 +67,8 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(Exception.class)
-	public ResponseEntity<ErrorResponse> handleException(HttpServletRequest request) {
+	public ResponseEntity<ErrorResponse> handleException(Exception exception, HttpServletRequest request) {
+		log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), exception);
 		return handle(CommonErrorCode.INTERNAL_SERVER_ERROR, request);
 	}
 

@@ -6,7 +6,7 @@ VALUES
   ('ACTIVITY', '액티비티', true),
   ('FOOD_TOUR', '맛집 탐방', true),
   ('SHOPPING', '쇼핑', true),
-  ('PHOTO_SPOT', '사진 명소', true),
+  ('PHOTO_SPOT', '사진 명소', false),
   ('HEALING', '휴식/힐링', true),
   ('FESTIVAL', '축제/이벤트', true),
   ('THEME_PARK', '테마파크', true)
@@ -21,7 +21,7 @@ VALUES
   ('CHINESE', '중식', true),
   ('JAPANESE', '일식', true),
   ('CAFE_DESSERT', '카페/디저트', true),
-  ('MILD', '순한 맛', true),
+  ('MILD', '순한 맛', false),
   ('SPICY', '매운 맛', true),
   ('VEGETARIAN', '채식', true),
   ('LOW_SODIUM', '저염식', true),
