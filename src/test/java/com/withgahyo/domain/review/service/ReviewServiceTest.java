@@ -9,8 +9,10 @@ import static org.mockito.Mockito.verify;
 import com.withgahyo.domain.community.entity.CommunityPost;
 import com.withgahyo.domain.community.repository.CommunityPostRepository;
 import com.withgahyo.domain.course.entity.Course;
+import com.withgahyo.domain.course.entity.CourseParticipant;
 import com.withgahyo.domain.course.entity.CourseStatus;
 import com.withgahyo.domain.course.repository.CourseRepository;
+import com.withgahyo.domain.course.repository.CourseParticipantRepository;
 import com.withgahyo.domain.place.entity.Region;
 import com.withgahyo.domain.review.dto.CreateReviewRequest;
 import com.withgahyo.domain.review.dto.UpdateReviewRequest;
@@ -19,6 +21,7 @@ import com.withgahyo.domain.review.entity.ReviewHighlight;
 import com.withgahyo.domain.review.repository.ReviewHighlightRepository;
 import com.withgahyo.domain.review.repository.ReviewRepository;
 import com.withgahyo.domain.user.entity.User;
+import com.withgahyo.domain.user.repository.UserRepository;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,6 +41,9 @@ class ReviewServiceTest {
 	private CourseRepository courseRepository;
 
 	@Mock
+	private CourseParticipantRepository courseParticipantRepository;
+
+	@Mock
 	private ReviewRepository reviewRepository;
 
 	@Mock
@@ -46,15 +52,20 @@ class ReviewServiceTest {
 	@Mock
 	private CommunityPostRepository communityPostRepository;
 
+	@Mock
+	private UserRepository userRepository;
+
 	private ReviewService reviewService;
 
 	@BeforeEach
 	void setUp() {
 		reviewService = new ReviewService(
 			courseRepository,
+			courseParticipantRepository,
 			reviewRepository,
 			reviewHighlightRepository,
-			communityPostRepository
+			communityPostRepository,
+			userRepository
 		);
 	}
 
@@ -97,6 +108,7 @@ class ReviewServiceTest {
 		);
 
 		given(courseRepository.findActiveById(10L)).willReturn(Optional.of(course));
+		given(userRepository.findById(1L)).willReturn(Optional.of(user));
 		given(reviewRepository.existsByCourse_CourseIdAndUser_UserId(10L, 1L)).willReturn(false);
 		given(reviewRepository.save(any(Review.class))).willAnswer(invocation -> {
 			Review review = invocation.getArgument(0);
@@ -135,6 +147,7 @@ class ReviewServiceTest {
 		);
 
 		given(courseRepository.findActiveById(10L)).willReturn(Optional.of(course));
+		given(userRepository.findById(1L)).willReturn(Optional.of(user));
 		given(reviewRepository.existsByCourse_CourseIdAndUser_UserId(10L, 1L)).willReturn(false);
 		given(reviewRepository.save(any(Review.class))).willAnswer(invocation -> {
 			Review review = invocation.getArgument(0);
@@ -177,6 +190,59 @@ class ReviewServiceTest {
 		assertThat(response.recommendationMin()).isEqualTo((byte) 0);
 		assertThat(response.recommendationMax()).isEqualTo((byte) 10);
 		assertThat(response.highlightOptions()).containsExactly("여행 코스", "편의시설", "맛집", "기억", "교통", "추천할래요");
+	}
+
+	@Test
+	void getReviewForm_allowsCourseParticipantToWriteReview() {
+		User creator = userWithId(User.create("KAKAO", "creator", "가효", null), 1L);
+		User participant = userWithId(User.create("KAKAO", "participant", "보호자", null), 2L);
+		Region region = Region.create("3", "1", "대전");
+		Course course = courseWithId(
+			Course.create(creator, region, "대전 가족여행", LocalDate.now().minusDays(2), LocalDate.now().minusDays(1)),
+			10L
+		);
+		course.confirm();
+
+		given(courseRepository.findActiveById(10L)).willReturn(Optional.of(course));
+		given(courseParticipantRepository.existsByCourseIdAndUserId(10L, 2L)).willReturn(true);
+
+		var response = reviewService.getReviewForm(2L, 10L);
+
+		assertThat(response.course().courseId()).isEqualTo(10L);
+	}
+
+	@Test
+	void createReview_savesReviewForParticipantUser() {
+		User creator = userWithId(User.create("KAKAO", "creator", "가효", null), 1L);
+		User participant = userWithId(User.create("KAKAO", "participant", "보호자", null), 2L);
+		Region region = Region.create("3", "1", "대전");
+		Course course = courseWithId(
+			Course.create(creator, region, "대전 가족여행", LocalDate.now().minusDays(2), LocalDate.now().minusDays(1)),
+			10L
+		);
+		course.confirm();
+		CreateReviewRequest request = new CreateReviewRequest(
+			(byte) 5,
+			"참여자 입장에서 좋았어요.",
+			(byte) 10,
+			List.of("여행 코스")
+		);
+
+		given(courseRepository.findActiveById(10L)).willReturn(Optional.of(course));
+		given(courseParticipantRepository.existsByCourseIdAndUserId(10L, 2L)).willReturn(true);
+		given(userRepository.findById(2L)).willReturn(Optional.of(participant));
+		given(reviewRepository.existsByCourse_CourseIdAndUser_UserId(10L, 2L)).willReturn(false);
+		given(reviewRepository.save(any(Review.class))).willAnswer(invocation -> {
+			Review review = invocation.getArgument(0);
+			setField(review, "reviewId", 100L);
+			return review;
+		});
+
+		reviewService.createReview(2L, 10L, request);
+
+		ArgumentCaptor<Review> reviewCaptor = ArgumentCaptor.forClass(Review.class);
+		verify(reviewRepository).save(reviewCaptor.capture());
+		assertThat(reviewCaptor.getValue().getUser().getUserId()).isEqualTo(2L);
 	}
 
 	@Test
