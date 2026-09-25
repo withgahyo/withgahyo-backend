@@ -247,6 +247,32 @@ class CourseRepositoryTest {
 		assertThat(result).isEmpty();
 	}
 
+	@Test
+	void findReviewPendingCourses_includesPastUpcomingCourseForCreator() {
+		User creator = persistUser();
+		Course pastCourse = persistCourse(creator, "지난 여행", LocalDate.now().minusDays(3));
+		pastCourse.confirm();
+		entityManager.flush();
+
+		List<Course> result = courseRepository.findReviewPendingCourses(creator.getUserId());
+
+		assertThat(result).extracting(Course::getCourseId).contains(pastCourse.getCourseId());
+	}
+
+	@Test
+	void findReviewPendingCourses_includesPastUpcomingCourseForParticipant() {
+		User creator = persistUser();
+		User participant = persistUser();
+		Course pastCourse = persistCourse(creator, "참여한 지난 여행", LocalDate.now().minusDays(3));
+		pastCourse.confirm();
+		entityManager.persist(CourseParticipant.create(pastCourse, participant, "MOTHER"));
+		entityManager.flush();
+
+		List<Course> result = courseRepository.findReviewPendingCourses(participant.getUserId());
+
+		assertThat(result).extracting(Course::getCourseId).contains(pastCourse.getCourseId());
+	}
+
 	private User persistUser() {
 		User user = User.create("KAKAO", "home-test-" + System.nanoTime(), "홈테스터", null);
 		entityManager.persist(user);

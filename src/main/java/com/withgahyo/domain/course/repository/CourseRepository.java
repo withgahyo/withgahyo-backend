@@ -24,9 +24,23 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 		select c
 		from Course c
 		join fetch c.region
-		where c.creatorUser.userId = :userId
-			and c.status = com.withgahyo.domain.course.entity.CourseStatus.COMPLETED
-			and c.deletedAt is null
+		where c.deletedAt is null
+			and (
+				c.creatorUser.userId = :userId
+				or exists (
+					select 1
+					from CourseParticipant cp
+					where cp.course = c
+						and cp.user.userId = :userId
+				)
+			)
+			and (
+				c.status = com.withgahyo.domain.course.entity.CourseStatus.COMPLETED
+				or (
+					c.status = com.withgahyo.domain.course.entity.CourseStatus.UPCOMING
+					and c.endDate < current_date
+				)
+			)
 			and not exists (
 				select 1
 				from Review r
